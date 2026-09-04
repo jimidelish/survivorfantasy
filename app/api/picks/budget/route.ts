@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { computeMultiplierBudget } from "@/lib/multiplierBudget";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get("user_id");
   const episodeId = req.nextUrl.searchParams.get("episode_id");

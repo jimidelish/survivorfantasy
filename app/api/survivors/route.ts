@@ -4,6 +4,8 @@ import { getCurrentSeason } from "@/lib/currentSeason";
 
 // Always scoped to the current season. Includes each survivor's advantages
 // (both active and used) so the front end can decide what to show.
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const season = await getCurrentSeason();
   if (!season) return NextResponse.json([]);

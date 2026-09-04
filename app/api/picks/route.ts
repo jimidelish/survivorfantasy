@@ -3,6 +3,8 @@ import supabaseAdmin from "@/lib/supabaseAdmin";
 import { MAX_MULTIPLIER_PER_SURVIVOR } from "@/lib/types";
 import { computeMultiplierBudget } from "@/lib/multiplierBudget";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get("user_id");
   const episodeId = req.nextUrl.searchParams.get("episode_id");

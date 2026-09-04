@@ -14,6 +14,8 @@ interface CsvRow {
 // doesn't exist yet. FULL REPLACE: deletes every existing survivor for that
 // season (cascading to their picks/events/advantages) before inserting the
 // new roster — the caller must pass confirm: true to acknowledge this.
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const filename = (body.filename as string) || "";

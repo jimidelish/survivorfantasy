@@ -6,6 +6,8 @@ import { getCurrentSeason } from "@/lib/currentSeason";
 // GET /api/points?by=survivor  -> each survivor's points, broken down per episode
 // Both scoped to the current season. Shape:
 // { episodes: [{id, number, title}], series: [{ id, name, points: { [episodeId]: number } }] }
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   const by = req.nextUrl.searchParams.get("by") === "survivor" ? "survivor" : "user";
 

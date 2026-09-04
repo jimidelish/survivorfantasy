@@ -17,6 +17,8 @@ interface CsvRow {
 // inactive, then every row from the CSV is upserted (matched on
 // category+name) as active. Rows already referenced by logged events are
 // never deleted — only deactivated — so past scores can't be broken.
+export const dynamic = "force-dynamic";
+
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const filename = (body.filename as string) || "";

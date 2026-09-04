@@ -3,6 +3,8 @@ import supabaseAdmin from "@/lib/supabaseAdmin";
 import { getCurrentSeason } from "@/lib/currentSeason";
 
 // Always scoped to the current season (highest season number).
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const season = await getCurrentSeason();
   if (!season) return NextResponse.json([]);

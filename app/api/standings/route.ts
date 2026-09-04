@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import supabaseAdmin from "@/lib/supabaseAdmin";
 import { getCurrentSeason } from "@/lib/currentSeason";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const season = await getCurrentSeason();
   if (!season) return NextResponse.json([]);
