@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background-color: #161f1a;
+  color: #ede6d2;
+}
+
+/* A thin gold rule used in place of card borders/shadows throughout the app */
+.rope-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(201, 162, 76, 0.55), transparent);
+}
+
+/* Multiplier "pips" shown on the picks page budget bar */
+.pip {
+  width: 0.65rem;
+  height: 0.65rem;
+  border-radius: 9999px;
+  background-color: rgba(143, 162, 148, 0.35);
+}
+.pip.filled {
+  background-color: #e2622a;
+}
+
+/* Focus states kept visible for keyboard users */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid #c9a24c;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
