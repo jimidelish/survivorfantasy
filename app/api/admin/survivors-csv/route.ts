@@ -97,6 +97,7 @@ export async function POST(req: NextRequest) {
     photo_url: r.photo_url,
     original_tribe: r.original_tribe,
     current_tribe: r.original_tribe, // tribes haven't swapped yet at initial setup
+    shot_in_the_dark: true, // everyone starts the season eligible
   }));
 
   const { data: inserted, error: insertError } = await supabaseAdmin

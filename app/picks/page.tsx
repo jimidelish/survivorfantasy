@@ -220,14 +220,31 @@ export default function PicksPage() {
               }`}
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="font-display text-lg">{s.name}</p>
-                  <p className="text-xs text-muted">
-                    {s.current_tribe || "No tribe"}
-                    {s.original_tribe && s.original_tribe !== s.current_tribe
-                      ? ` (orig. ${s.original_tribe})`
-                      : ""}
-                  </p>
+                <div className="flex items-start gap-3">
+                  {s.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={s.photo_url}
+                      alt={s.name}
+                      className="h-14 w-14 rounded-full border border-surface2 object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = "none";
+                      }}
+                    />
+                  ) : (
+                    <div className="flex h-14 w-14 items-center justify-center rounded-full border border-surface2 bg-surface2 font-display text-lg text-muted">
+                      {s.name.charAt(0)}
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-display text-lg">{s.name}</p>
+                    <p className="text-xs text-muted">
+                      {s.current_tribe || "No tribe"}
+                      {s.original_tribe && s.original_tribe !== s.current_tribe
+                        ? ` (orig. ${s.original_tribe})`
+                        : ""}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
@@ -257,22 +274,28 @@ export default function PicksPage() {
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                 <span>Points: {stats?.total ?? 0}</span>
                 <span>Avg: {stats ? stats.average.toFixed(1) : "0.0"}</span>
-                {s.shot_in_the_dark && <span className="text-gold">Shot in the Dark</span>}
-                {!s.has_vote && <span className="text-rust">No vote</span>}
+                <span className={s.shot_in_the_dark ? "text-gold" : "text-muted"}>
+                  {s.shot_in_the_dark ? "Shot in the Dark: eligible" : "Shot in the Dark: not eligible"}
+                </span>
+                <span className={s.has_vote ? "text-muted" : "text-rust"}>
+                  {s.has_vote ? "Can vote" : "No vote"}
+                </span>
               </div>
 
-              {activeAdvantages.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {activeAdvantages.map((a) => (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {activeAdvantages.length > 0 ? (
+                  activeAdvantages.map((a) => (
                     <span
                       key={a.id}
                       className="rounded-full border border-gold/40 px-2 py-0.5 text-[11px] text-gold"
                     >
                       {a.type}
                     </span>
-                  ))}
-                </div>
-              )}
+                  ))
+                ) : (
+                  <span className="text-[11px] text-muted">No advantages held</span>
+                )}
+              </div>
             </div>
           );
         })}
