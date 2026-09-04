@@ -50,6 +50,7 @@ export default function NavBar() {
           <NavLink href="/picks" label="My Picks" />
           <NavLink href="/scores" label="Scores" />
           {user && <NavLink href="/events" label="Enter Events" />}
+          {user?.is_admin && <NavLink href="/admin" label="Admin" />}
           <Link
             href="/login"
             className="rounded-full border border-gold/50 px-3 py-1 text-xs text-gold hover:bg-gold/10"

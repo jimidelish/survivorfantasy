@@ -1,0 +1,11 @@
+category,name,point_value
+Challenge,Won individual immunity,5
+Challenge,Won team/tribe immunity,3
+Challenge,Won reward challenge,2
+Advantage,Found hidden immunity idol,3
+Advantage,Played idol successfully,4
+Advantage,Found an advantage (any type),2
+Strategy,Made a big strategic move,2
+Tribal Council,Received a vote at tribal council,-1
+Tribal Council,Voted out,-5
+Other,Eliminated (medical or quit),-5

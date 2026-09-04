@@ -46,7 +46,8 @@ create table if not exists survivors (
   eliminated boolean not null default false,
   shot_in_the_dark boolean not null default false,
   has_vote boolean not null default true, -- false = hit with a "no vote" twist/punishment
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (season_id, name)
 );
 
 create index if not exists idx_survivors_season on survivors(season_id);
@@ -78,11 +79,18 @@ create table if not exists episodes (
   title text,
   air_date timestamptz,
   locked boolean not null default false,
+  is_current boolean not null default false, -- the one episode users draft/log events for by default
   created_at timestamptz not null default now(),
   unique (season_id, number)
 );
 
 create index if not exists idx_episodes_season on episodes(season_id);
+
+-- Enforces at most one "active" episode per season. The app also handles
+-- this in code (unsetting the old one when a new one is marked active),
+-- but this index is a hard backstop against ever having two.
+create unique index if not exists idx_episodes_one_active_per_season
+  on episodes(season_id) where is_current;
 
 -- ============================================================
 -- EVENT TYPES
@@ -99,7 +107,8 @@ create table if not exists event_types (
   name text not null,
   point_value integer not null,
   active boolean not null default true,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  unique (category, name)
 );
 
 -- ============================================================
@@ -183,9 +192,8 @@ group by ep.season_id, uep.user_id;
 
 -- ============================================================
 -- SEED DATA
--- Adjust freely — this just gets a season 1 skeleton going.
 -- ============================================================
-insert into seasons (number, name) values (1, 'Season 1')
+insert into seasons (number, name) values (51, 'Survivor 51')
 on conflict do nothing;
 
 insert into event_types (category, name, point_value) values
@@ -199,17 +207,22 @@ insert into event_types (category, name, point_value) values
   ('Tribal Council', 'Received a vote at tribal council', -1),
   ('Tribal Council', 'Voted out', -5),
   ('Other', 'Eliminated (medical or quit)', -5)
-on conflict do nothing;
+on conflict (category, name) do nothing;
 
--- Make your own account an admin (kept for a future admin page):
+-- Make your own account an admin so you can access /admin:
 -- update users set is_admin = true where name = 'YOUR NAME HERE';
 
--- Add a survivor to season 1 (grab the season id from the seasons table):
--- insert into survivors (season_id, name, photo_url, original_tribe, current_tribe)
---   values ('<season-uuid>', 'Survivor Name', 'https://...', 'Tribe A', 'Tribe A');
+-- Survivors and event types are managed from the Admin page via CSV upload
+-- (see README section "Admin page" for the file naming scheme and templates).
+-- Advantages are still added manually, since they change constantly during
+-- an episode and a CSV round-trip would be slower than just doing this:
+-- insert into survivor_advantages (survivor_id, type)
+--   values ('<survivor-uuid>', 'Immunity Idol');
 
--- Add an episode to season 1:
+-- Episodes are created from Admin > Season Control. If you ever need to do
+-- it manually instead:
 -- insert into episodes (season_id, number, title) values ('<season-uuid>', 1, 'Premiere');
 
--- Start a new season later:
--- insert into seasons (number, name) values (2, 'Season 2');
+-- Start a new season later: just insert a survivors CSV named survivors_s52.csv
+-- (or whatever the new season number is) from the Admin page — it creates the
+-- season row automatically if it doesn't exist yet.

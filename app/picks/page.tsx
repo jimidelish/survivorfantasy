@@ -56,8 +56,8 @@ export default function PicksPage() {
       setEpisodes(eps);
       setSurvivors(survs);
       setStatsData(stats);
-      const openEpisode = eps.find((e: Episode) => !e.locked);
-      setEpisodeId(openEpisode ? openEpisode.id : eps[eps.length - 1]?.id || "");
+      const activeEpisode = eps.find((e: Episode) => e.is_current) || eps.find((e: Episode) => !e.locked);
+      setEpisodeId(activeEpisode ? activeEpisode.id : eps[eps.length - 1]?.id || "");
       setLoading(false);
     });
   }, []);

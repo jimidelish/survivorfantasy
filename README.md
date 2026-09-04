@@ -17,7 +17,7 @@ Built with **Next.js** (App Router), **Supabase** (Postgres), **Recharts**, and
 1. Go to [supabase.com](https://supabase.com) and create a project.
 2. Open **SQL Editor > New query**, paste in the entire contents of
    [`sql/schema.sql`](./sql/schema.sql), and run it. This creates every table,
-   the points views, and seeds a `Season 1` row plus a starter scoring table.
+   the points views, and seeds a `Season 51` row plus a starter scoring table.
 3. Get your three keys from the **Connect** button (or Settings > API Keys):
    Project URL, the **publishable** key (some projects call this "anon"), and
    the **secret** key (some projects call this "service_role").
@@ -45,41 +45,71 @@ to create your first account.
 
 ---
 
-## 2. There's no admin UI right now — here's how setup works instead
+## 2. Admin page
 
-By design, this version has no admin page. Season, episode, survivor, and
-event-type management all happen directly in **Supabase's Table Editor**
-(Database icon in the left sidebar, or the SQL Editor for bulk inserts). The
-schema comments in `sql/schema.sql` include ready-to-edit `insert` examples
-for each of these. A quick reference:
+Season, episode, survivor, and event-type management now has a UI at `/admin`,
+gated to accounts with `is_admin = true`. Make yourself an admin once via the
+Supabase SQL Editor:
 
-- **Start a new season:** insert a row into `seasons` with a higher `number`
-  than any existing season. The app automatically treats the highest-numbered
-  season as "current" everywhere (home page, nav header, My Picks, Scores) —
-  there's no season switcher and nothing else to configure.
-- **Add survivors:** insert into `survivors`, referencing the current
-  season's `id`. Set `original_tribe` / `current_tribe`, and leave
-  `eliminated` / `shot_in_the_dark` / `has_vote` at their defaults unless you
-  need to set them immediately.
-- **Give a survivor an advantage:** insert into `survivor_advantages`
-  (survivor_id + a `type` from the fixed list in the schema). A survivor can
-  hold several at once — each is its own row. Update `status` to `'used'`
-  (rather than deleting) when it's played, so history is preserved.
-- **Add an episode:** insert into `episodes`, referencing the season's `id`
-  and an episode `number` (unique within that season).
-- **Edit scoring (balance changes):** edit `event_types` directly — change a
-  `point_value`, add a new row, or set `active = false` to retire one from
-  the dropdown without breaking already-logged events. Changing a value here
-  only affects *future* events; every already-logged event snapshot its point
-  value at the moment it was entered, so past scores never shift.
-- **Lock/unlock picks:** this one **does** have a UI — any signed-in user can
-  toggle it from the Enter Events page.
+```sql
+update users set is_admin = true where name = 'Your Name';
+```
 
-If this manual workflow becomes a bottleneck, the next natural step is
-re-adding a lightweight setup page — the schema and API routes are already
-structured to make that a fairly small addition (see `app/api/survivors`,
-`app/api/episodes`, `app/api/event-types` for the read side to build a write
-UI against).
+The Admin page has three tabs:
+
+### Season Setup — survivor roster via CSV
+
+Upload a CSV named **`survivors_s{season}.csv`** (e.g. `survivors_s51.csv`).
+Templates are in [`templates/`](./templates). Headers:
+
+```
+name,photo_url,original_tribe
+```
+
+The app parses the season number straight out of the filename. If that
+season doesn't exist yet, it's created automatically. This is a **full
+replace, scoped to that one season only**: every existing survivor for that
+season is deleted (cascading to any picks/events/advantages tied to them)
+before the new roster is inserted — other seasons are never touched. There's
+a confirmation checkbox in the UI before this runs. `current_tribe` is set
+equal to `original_tribe` on import, since tribes haven't swapped yet at
+initial setup.
+
+### Season Control — episodes and picks
+
+- Add episodes (number + optional title) for the current season.
+- Mark one episode **active** — this is a new concept, separate from
+  locking. The active episode is what **My Picks** and **Enter Events**
+  default to when a user opens those pages. Only one episode per season can
+  be active at a time (enforced at the database level).
+- **Lock/unlock** picks per episode — this now lives here instead of on the
+  Enter Events page, alongside the other episode-level controls.
+- View every user's submitted picks for any episode (survivor + multiplier),
+  read-only.
+
+### Event Type Setup — scoring table via CSV
+
+Upload a CSV named **`event_types_s{season}.csv`** (e.g. `event_types_s51.csv`).
+Headers:
+
+```
+category,name,point_value
+```
+
+Event types are **global**, not scoped to a season — the season number in
+the filename is only for your own record-keeping, not stored anywhere.
+Uploading is a "full replace" of what's *active*, implemented safely: every
+currently active event type is deactivated, then every row in the CSV is
+upserted (matched on `category` + `name`) as active. Rows already referenced
+by logged events are never deleted, only deactivated, so past scores can
+never be broken by a balance-change upload.
+
+### Still manual (for now)
+
+**Advantages** are still added directly in Supabase's Table Editor
+(`survivor_advantages` table) — they change constantly during an episode and
+a CSV round-trip would be slower than editing the row directly. See the
+comments in `sql/schema.sql` for the insert format.
 
 ---
 
@@ -135,9 +165,16 @@ materialized/stored points table to keep in sync.
 
 ## 5. Notes
 
-- **Event entry and pick-locking are open to everyone**, not gated by
-  `is_admin`. The `users.is_admin` column still exists for a future admin
-  page, but nothing currently checks it.
+- **Event entry stays open to everyone**, not gated by `is_admin` — logging
+  events and undoing them can be done by any signed-in user. Episode-level
+  controls (locking, setting the active episode, season/event-type setup)
+  are admin-only, at `/admin`.
+- **"Active episode" is separate from "locked."** Active determines what My
+  Picks and Enter Events default to; locked determines whether picks can
+  still be submitted/changed. You'll usually flip both together (make an
+  episode active when it airs, lock it once tribal council happens), but
+  they're independent so you have room to, say, unlock a past episode to fix
+  a mistake without changing what's currently "active."
 - **Auth is intentionally simple** — name-only, no passwords. Fine for a
   trusted friend group; swap in Supabase Auth (magic links) if you need more.
 - **Advantages** are modeled as their own table
@@ -145,6 +182,9 @@ materialized/stored points table to keep in sync.
   specifically so a survivor can hold more than one at a time (e.g. an Idol
   *and* an Extra Vote simultaneously) and so used advantages stay in history
   instead of being overwritten.
+- **CSV uploads are destructive by design**, not incremental — see section 2
+  above for exactly what each one deletes/deactivates. Both require a
+  confirmation checkbox in the UI before running.
 
 ## 6. Project structure
 
@@ -154,10 +194,12 @@ app/
   picks/page.tsx           My Picks (draft + survivor reference)
   scores/page.tsx           Scores (stacked bar charts, by player/survivor)
   events/page.tsx            Enter Events (open to all signed-in users)
-  login/page.tsx               Simple name-based sign-in
+  admin/page.tsx              Admin: Season Setup / Season Control / Event Type Setup
+  login/page.tsx                Simple name-based sign-in
   api/
     seasons/current/           Current season (highest season number)
-    episodes/                   List/lock episodes (current season)
+    episodes/                   List/create episodes (current season)
+    episodes/[id]/                Lock/unlock, set active episode
     survivors/                   List survivors + advantages (current season)
     event-types/                   Dynamic scoring reference table
     events/                          Log/undo events (snapshots point value)
@@ -166,14 +208,22 @@ app/
     points/                              Per-episode points, by user or survivor
     standings/                            Season-to-date leaderboard
     users/                                  Name-based login
+    admin/survivors-csv/                     Season Setup CSV upload
+    admin/event-types-csv/                     Event Type Setup CSV upload
+    admin/picks/                                 View picks by user (admin)
 lib/
   supabaseAdmin.ts        Server-only Supabase client (service role key)
   currentSeason.ts          Resolves "current" = highest season number
   multiplierBudget.ts         Computes base 7 + behind-leader bonus
-  types.ts                      Shared TypeScript types + game constants
+  csvFilenames.ts                Parses season number out of CSV filenames
+  types.ts                          Shared TypeScript types + game constants
 components/
-  NavBar.tsx               Season-aware header, no admin link
+  NavBar.tsx               Season-aware header, admin link for admins
   StackedPointsChart.tsx      Recharts stacked bar chart (Scores page)
+  CsvUpload.tsx                  Drag-and-drop CSV upload widget (Admin page)
+templates/
+  survivors_s51.csv        Example roster CSV
+  event_types_s51.csv        Example scoring CSV
 sql/
   schema.sql              Run once in Supabase; includes setup examples
 ```

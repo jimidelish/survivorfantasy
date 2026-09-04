@@ -44,8 +44,8 @@ export default function EventsPage() {
       setEpisodes(eps);
       setSurvivors(survs);
       setEventTypes(types);
-      const openEpisode = eps.find((e: Episode) => !e.locked) || eps[eps.length - 1];
-      if (openEpisode) setEpisodeId(openEpisode.id);
+      const activeEpisode = eps.find((e: Episode) => e.is_current) || eps[eps.length - 1];
+      if (activeEpisode) setEpisodeId(activeEpisode.id);
       const activeSurvivors = survs.filter((s: Survivor) => !s.eliminated);
       if (activeSurvivors[0]) setSurvivorId(activeSurvivors[0].id);
       if (types[0]) setEventTypeId(types[0].id);
@@ -98,17 +98,6 @@ export default function EventsPage() {
     setEvents((prev) => prev.filter((ev) => ev.id !== id));
   }
 
-  async function toggleLock() {
-    if (!currentEpisode) return;
-    const res = await fetch(`/api/episodes/${currentEpisode.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ locked: !currentEpisode.locked }),
-    });
-    const data = await res.json();
-    setEpisodes((prev) => prev.map((ep) => (ep.id === data.id ? data : ep)));
-  }
-
   if (!user) return null;
 
   return (
@@ -116,8 +105,8 @@ export default function EventsPage() {
       <h1 className="font-display text-3xl font-semibold">Enter events</h1>
       <p className="mt-2 text-sm text-muted">
         Log what happened this episode. Points flow to whoever drafted each survivor,
-        multiplied by their assigned multiplier. Anyone signed in can log events — this
-        page will grow with more detail in future iterations.
+        multiplied by their assigned multiplier. Anyone signed in can log events.
+        Episode locking and the active episode are managed from Admin &gt; Season Control.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
@@ -133,13 +122,10 @@ export default function EventsPage() {
             </option>
           ))}
         </select>
-        {currentEpisode && (
-          <button
-            onClick={toggleLock}
-            className="rounded-full border border-gold/50 px-3 py-1 text-xs text-gold hover:bg-gold/10"
-          >
-            {currentEpisode.locked ? "Unlock picks" : "Lock picks"}
-          </button>
+        {currentEpisode?.locked && (
+          <span className="rounded-full bg-rust/20 px-3 py-1 text-xs text-rust">
+            Picks are locked for this episode
+          </span>
         )}
       </div>
 

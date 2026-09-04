@@ -49,6 +49,7 @@ export interface Episode {
   title: string | null;
   air_date: string | null;
   locked: boolean;
+  is_current: boolean;
 }
 
 export interface EventType {
