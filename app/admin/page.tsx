@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppUser, Episode, Season, LOCAL_STORAGE_KEY } from "@/lib/types";
+import { AppUser, Episode, Season, Survivor, ADVANTAGE_TYPES, LOCAL_STORAGE_KEY } from "@/lib/types";
 import CsvUpload from "@/components/CsvUpload";
 
-type Tab = "setup" | "control" | "eventTypes";
+type Tab = "setup" | "control" | "eventTypes" | "updateSurvivors";
 
 interface UserPicksGroup {
   user_id: string;
@@ -48,6 +48,7 @@ export default function AdminPage() {
           { id: "setup", label: "Season Setup" },
           { id: "control", label: "Season Control" },
           { id: "eventTypes", label: "Event Type Setup" },
+          { id: "updateSurvivors", label: "Update Survivors" },
         ].map((t) => (
           <button
             key={t.id}
@@ -67,6 +68,7 @@ export default function AdminPage() {
         {tab === "setup" && <SeasonSetupTab />}
         {tab === "control" && <SeasonControlTab />}
         {tab === "eventTypes" && <EventTypeSetupTab />}
+        {tab === "updateSurvivors" && <UpdateSurvivorsTab />}
       </div>
     </div>
   );
@@ -304,6 +306,212 @@ function SeasonControlTab() {
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+function UpdateSurvivorsTab() {
+  const [survivors, setSurvivors] = useState<Survivor[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  function refresh() {
+    fetch("/api/survivors")
+      .then((r) => r.json())
+      .then(setSurvivors)
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(refresh, []);
+
+  async function updateSurvivor(
+    id: string,
+    update: { eliminated?: boolean; shot_in_the_dark?: boolean; current_tribe?: string | null }
+  ) {
+    await fetch(`/api/admin/survivors/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(update),
+    });
+    refresh();
+  }
+
+  async function addAdvantage(survivorId: string, type: string) {
+    await fetch("/api/admin/advantages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ survivor_id: survivorId, type }),
+    });
+    refresh();
+  }
+
+  async function setAdvantageStatus(advantageId: string, status: "active" | "used") {
+    await fetch(`/api/admin/advantages/${advantageId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    refresh();
+  }
+
+  async function removeAdvantage(advantageId: string) {
+    await fetch(`/api/admin/advantages/${advantageId}`, { method: "DELETE" });
+    refresh();
+  }
+
+  if (loading) return <p className="text-sm text-muted">Loading survivors…</p>;
+
+  return (
+    <div>
+      <p className="text-sm text-muted">
+        Update elimination status, Shot in the Dark availability, current tribe, and advantages
+        for this season&apos;s survivors. Changes apply immediately — no separate save step.
+      </p>
+      <div className="mt-6 space-y-3">
+        {survivors.map((s) => (
+          <SurvivorRow
+            key={s.id}
+            survivor={s}
+            onUpdate={(update) => updateSurvivor(s.id, update)}
+            onAddAdvantage={(type) => addAdvantage(s.id, type)}
+            onSetAdvantageStatus={setAdvantageStatus}
+            onRemoveAdvantage={removeAdvantage}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SurvivorRow({
+  survivor,
+  onUpdate,
+  onAddAdvantage,
+  onSetAdvantageStatus,
+  onRemoveAdvantage,
+}: {
+  survivor: Survivor;
+  onUpdate: (update: {
+    eliminated?: boolean;
+    shot_in_the_dark?: boolean;
+    current_tribe?: string | null;
+  }) => void;
+  onAddAdvantage: (type: string) => void;
+  onSetAdvantageStatus: (advantageId: string, status: "active" | "used") => void;
+  onRemoveAdvantage: (advantageId: string) => void;
+}) {
+  const [tribe, setTribe] = useState(survivor.current_tribe || "");
+  const [newAdvantageType, setNewAdvantageType] = useState<string>(ADVANTAGE_TYPES[0]);
+
+  useEffect(() => {
+    setTribe(survivor.current_tribe || "");
+  }, [survivor.current_tribe]);
+
+  const tribeDirty = tribe !== (survivor.current_tribe || "");
+
+  return (
+    <div
+      className={`rounded-md border px-4 py-4 ${
+        survivor.eliminated ? "border-surface2 bg-surface/30 opacity-60" : "border-surface2 bg-surface"
+      }`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="font-display text-lg">
+          {survivor.name}
+          {survivor.eliminated && <span className="ml-2 text-xs font-normal text-rust">Eliminated</span>}
+        </p>
+        <div className="flex flex-wrap items-center gap-4">
+          <label className="flex items-center gap-1.5 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={survivor.eliminated}
+              onChange={(e) => onUpdate({ eliminated: e.target.checked })}
+            />
+            Eliminated
+          </label>
+          <label className="flex items-center gap-1.5 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={survivor.shot_in_the_dark}
+              onChange={(e) => onUpdate({ shot_in_the_dark: e.target.checked })}
+            />
+            Shot in the Dark available
+          </label>
+        </div>
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <label className="text-sm text-muted">Current tribe:</label>
+        <input
+          value={tribe}
+          onChange={(e) => setTribe(e.target.value)}
+          className="rounded-md border border-surface2 bg-surface2 px-2 py-1 text-sm"
+        />
+        {tribeDirty && (
+          <button
+            onClick={() => onUpdate({ current_tribe: tribe || null })}
+            className="rounded-full bg-ember px-3 py-1 text-xs font-medium text-jungle hover:opacity-90"
+          >
+            Save
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3">
+        <p className="text-xs text-muted">Advantages</p>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {(survivor.advantages || []).map((a) => (
+            <span
+              key={a.id}
+              className={`flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] ${
+                a.status === "active" ? "border-gold/40 text-gold" : "border-surface2 text-muted line-through"
+              }`}
+            >
+              {a.type}
+              {a.status === "active" && (
+                <button
+                  type="button"
+                  onClick={() => onSetAdvantageStatus(a.id, "used")}
+                  className="no-underline hover:text-parchment"
+                  title="Mark used"
+                >
+                  ✓
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onRemoveAdvantage(a.id)}
+                className="no-underline hover:text-rust"
+                title="Remove"
+              >
+                ×
+              </button>
+            </span>
+          ))}
+          {(survivor.advantages || []).length === 0 && (
+            <span className="text-[11px] text-muted">None</span>
+          )}
+        </div>
+        <div className="mt-2 flex items-center gap-2">
+          <select
+            value={newAdvantageType}
+            onChange={(e) => setNewAdvantageType(e.target.value)}
+            className="rounded-md border border-surface2 bg-surface2 px-2 py-1 text-xs"
+          >
+            {ADVANTAGE_TYPES.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={() => onAddAdvantage(newAdvantageType)}
+            className="rounded-full border border-gold/50 px-3 py-1 text-xs text-gold hover:bg-gold/10"
+          >
+            Add advantage
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
