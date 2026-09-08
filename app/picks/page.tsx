@@ -194,7 +194,7 @@ export default function PicksPage() {
           </span>
           <button
             onClick={submit}
-            disabled={saving || !budget || totalUsed !== budget.budget || currentEpisode?.locked}
+            disabled={saving || !isDirty || !budget || totalUsed !== budget.budget || currentEpisode?.locked}
             className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle transition-opacity hover:opacity-90 disabled:opacity-40"
           >
             {saving ? "Saving…" : "Save picks"}
@@ -378,7 +378,7 @@ export default function PicksPage() {
       <div className="mt-8 flex items-center gap-4">
         <button
           onClick={submit}
-          disabled={saving || !budget || totalUsed !== budget.budget || currentEpisode?.locked}
+          disabled={saving || !isDirty || !budget || totalUsed !== budget.budget || currentEpisode?.locked}
           className="rounded-md bg-ember px-6 py-3 font-medium text-jungle transition-opacity hover:opacity-90 disabled:opacity-40"
         >
           {saving ? "Saving…" : "Save picks"}
