@@ -329,6 +329,7 @@ function SurvivorAvatar({ name, photoUrl }: { name: string; photoUrl: string | n
     <img
       src={photoUrl}
       alt={name}
+      referrerPolicy="no-referrer"
       className="h-14 w-14 shrink-0 rounded-full border border-surface2 object-cover"
       onError={() => setFailed(true)}
     />
