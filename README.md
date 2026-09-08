@@ -166,9 +166,13 @@ materialized/stored points table to keep in sync.
   points **by player** or **by survivor**, each bar segmented by episode, plus
   a sorted totals list below.
 - **Enter Events (`/events`)** — open to every signed-in user, not just
-  admins. Log an event for a survivor in an episode; event types are grouped
-  by category in the dropdown. Includes undo, and the pick-lock toggle.
-  Intentionally minimal for now — flagged in the UI as something to expand later.
+  admins. Checkboxes for survivors (photo + name, eliminated ones shown
+  greyed out but still selectable) and for event types (grouped by
+  category) — logging creates one event per survivor × event type
+  combination in a single "Log event(s)" click, for scenes where several
+  people do the same thing or one person does several things at once. A
+  toggle button per tribe checks/unchecks all of that tribe's survivors at
+  once. Includes undo per logged event.
 
 ---
 
@@ -212,7 +216,8 @@ app/
     survivors/                   List survivors + tribe + advantages (current season)
     tribes/                       List tribes (current season)
     event-types/                   Dynamic scoring reference table
-    events/                          Log/undo events (snapshots point value)
+    events/                          Get/undo events (snapshots point value)
+    events/bulk/                       Log events for every (survivor x event type) pair at once
     picks/                             Get/submit picks
     picks/budget/                      Compute a user's multiplier budget
     points/                              Per-episode points, by user or survivor
@@ -234,6 +239,7 @@ components/
   NavBar.tsx               Season-aware header, admin link for admins
   StackedPointsChart.tsx      Recharts stacked bar chart (Scores page)
   CsvUpload.tsx                  Drag-and-drop CSV upload widget (Admin page)
+  SurvivorAvatar.tsx               Photo w/ broken-image fallback (My Picks, Enter Events)
 templates/
   survivors_s51.csv        Example roster CSV
   event_types_s51.csv        Example scoring CSV

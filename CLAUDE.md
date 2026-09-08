@@ -34,6 +34,11 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
 - **Events snapshot their point value** at the moment they're logged
   (`events.point_value` is a copy of `event_types.point_value` at insert
   time), so later balance changes to `event_types` never rewrite history.
+  Enter Events (`/events`) logs in bulk: checking N survivors and M event
+  types and clicking "Log event(s)" creates N×M individual event rows in
+  one call to `POST /api/events/bulk` (one scene, multiple people and/or
+  multiple things at once) — there's no grouping concept above the
+  individual `events` rows, so each one still undoes independently.
 - **"Active episode" ≠ "locked."** `episodes.is_current` (one true per season,
   enforced by a partial unique index) is what My Picks / Enter Events default
   to. `episodes.locked` is a separate flag controlling whether picks can
@@ -96,8 +101,21 @@ Deliberately not a generic SaaS look — a "tribal council at night" theme:
 4. **Broken image fallbacks must use React state**, not imperative
    `element.style.display = "none"` in an `onError` handler — the latter gets
    wiped out on the next unrelated re-render, causing the browser's default
-   broken-image icon to reappear. See `SurvivorAvatar` in `app/picks/page.tsx`
-   for the correct pattern.
+   broken-image icon to reappear. See `components/SurvivorAvatar.tsx` (shared
+   by My Picks and Enter Events) for the correct pattern — also sets
+   `referrerPolicy="no-referrer"`, since Fandom/Wikia's image CDN 404s
+   requests that carry a cross-site `Referer` header (hotlink protection).
+5. **`force-dynamic` alone does not stop `fetch()` calls made *inside* a
+   route from being cached.** It only stops the route's own output from
+   being cached — Next.js's separate Data Cache still applies to individual
+   `fetch()` calls by default, and that cache **persists across
+   deployments** (a redeploy will NOT clear it). This let the app serve
+   stale Supabase data for an unpredictable window — sometimes minutes,
+   once observed as long as a day — after an edit, even on a hard refresh.
+   Fixed in `lib/supabaseAdmin.ts` by passing a custom `fetch` that forces
+   `cache: "no-store"` on every request the Supabase client makes. If a
+   future data source is added that isn't routed through `supabaseAdmin`,
+   it needs this same treatment.
 
 ## Current state / what's been tested
 

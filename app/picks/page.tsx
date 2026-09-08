@@ -10,6 +10,7 @@ import {
   MAX_MULTIPLIER_PER_SURVIVOR,
   ADVANTAGE_COLORS,
 } from "@/lib/types";
+import SurvivorAvatar from "@/components/SurvivorAvatar";
 
 interface Budget {
   base: number;
@@ -405,31 +406,5 @@ export default function PicksPage() {
       {message && <p className="mt-4 text-sm text-gold">{message}</p>}
       {error && <p className="mt-4 text-sm text-rust">{error}</p>}
     </div>
-  );
-}
-
-// Tracks load failure in React state (not by mutating the DOM node directly),
-// so once a photo fails to load, it reliably stays as the fallback avatar
-// even when the page re-renders for unrelated reasons (e.g. clicking +/-).
-function SurvivorAvatar({ name, photoUrl }: { name: string; photoUrl: string | null }) {
-  const [failed, setFailed] = useState(false);
-
-  if (!photoUrl || failed) {
-    return (
-      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border border-surface2 bg-surface2 font-display text-lg text-muted">
-        {name.charAt(0)}
-      </div>
-    );
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={photoUrl}
-      alt={name}
-      referrerPolicy="no-referrer"
-      className="h-14 w-14 shrink-0 rounded-full border border-surface2 object-cover"
-      onError={() => setFailed(true)}
-    />
   );
 }
