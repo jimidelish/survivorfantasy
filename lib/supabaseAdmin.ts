@@ -14,6 +14,15 @@ if (!supabaseUrl || !serviceRoleKey) {
 
 const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
   auth: { persistSession: false },
+  // Next.js patches the global `fetch` to cache requests by default (a
+  // separate layer from route-level `dynamic = "force-dynamic"`, which only
+  // stops the route's own output from being cached — it does NOT stop
+  // fetch() calls made inside the route, and that cache persists across
+  // deployments). Force every Supabase request to skip it, so this client
+  // always reads live data.
+  global: {
+    fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+  },
 });
 
 export default supabaseAdmin;
