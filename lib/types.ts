@@ -26,12 +26,12 @@ export type AdvantageType = (typeof ADVANTAGE_TYPES)[number];
 export const ADVANTAGE_COLORS: Record<AdvantageType, string> = {
   "Immunity Idol": "#B8860B", // bronze/goldenrod
   "Extra Vote": "#4A90D9", // blue
-  "Beware Advantage": "#8E44AD", // purple
-  "Idol Clue": "#E8B93D", // bright gold-yellow — same hue family as Immunity Idol's bronze
+  "Beware Advantage": "#D64545", // red/crimson
+  "Idol Clue": "#C9C24B", // olive/chartreuse
   "Steal a Vote": "#D6449E", // magenta/pink
-  "Block a Vote": "#5B5EA6", // indigo
-  "Idol Nullifier": "#6E85A0", // slate blue-grey
-  "Knowledge is Power": "#C9C24B", // olive/chartreuse
+  "Block a Vote": "#8E44AD", // purple
+  "Idol Nullifier": "#D9822B", // orange/amber
+  "Knowledge is Power": "#6B4226", // brown/chestnut
 };
 
 export interface SurvivorAdvantage {
