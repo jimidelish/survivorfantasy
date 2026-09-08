@@ -183,9 +183,20 @@ export default function PicksPage() {
             <span className="text-sm text-muted">
               {Object.keys(picks).length} survivor(s) selected
             </span>
-            <span className="text-sm text-muted">
-              {totalUsed}/{budget.budget} multiplier points used
-            </span>
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted">
+                {totalUsed}/{budget.budget} multiplier points used
+              </span>
+              {Object.keys(picks).length > 0 && !currentEpisode?.locked && (
+                <button
+                  type="button"
+                  onClick={() => setPicks({})}
+                  className="text-xs text-rust hover:underline"
+                >
+                  Clear all
+                </button>
+              )}
+            </div>
           </div>
           <div className="mt-3 flex gap-1.5">
             {Array.from({ length: budget.budget }).map((_, i) => (
@@ -198,6 +209,45 @@ export default function PicksPage() {
               leader by {budget.leaderPoints - budget.userPoints} points after episode{" "}
               {budget.previousEpisodeNumber}.
             </p>
+          )}
+          {Object.keys(picks).length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {Object.entries(picks).map(([survivorId, multiplier]) => {
+                const survivor = survivors.find((s) => s.id === survivorId);
+                if (!survivor) return null;
+                const canIncrease =
+                  multiplier < MAX_MULTIPLIER_PER_SURVIVOR && remaining > 0;
+                return (
+                  <div
+                    key={survivorId}
+                    className="flex items-center gap-2 rounded-full border border-gold/40 bg-surface2 px-3 py-1.5"
+                  >
+                    <span className="text-sm">{survivor.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => adjust(survivorId, -1)}
+                      disabled={currentEpisode?.locked}
+                      className="h-5 w-5 rounded-full border border-surface2 text-xs disabled:opacity-30"
+                      aria-label={`Decrease ${survivor.name} multiplier`}
+                    >
+                      −
+                    </button>
+                    <span className="w-5 text-center text-xs font-display text-ember">
+                      {multiplier}×
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => adjust(survivorId, 1)}
+                      disabled={!canIncrease || currentEpisode?.locked}
+                      className="h-5 w-5 rounded-full border border-surface2 text-xs disabled:opacity-30"
+                      aria-label={`Increase ${survivor.name} multiplier`}
+                    >
+                      +
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </div>
       )}
