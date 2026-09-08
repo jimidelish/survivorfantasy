@@ -79,7 +79,7 @@ create table if not exists survivor_advantages (
   id uuid primary key default gen_random_uuid(),
   survivor_id uuid not null references survivors(id) on delete cascade,
   type text not null check (type in (
-    'Immunity Idol', 'Extra Vote', 'Beware Advantage', 'Idol Clue',
+    'Immunity Idol', 'Extra Vote', 'Beware Advantage', 'Advantage Clue',
     'Steal a Vote', 'Block a Vote', 'Idol Nullifier', 'Knowledge is Power'
   )),
   status text not null default 'active' check (status in ('active', 'used')),

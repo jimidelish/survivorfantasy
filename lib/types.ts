@@ -14,7 +14,7 @@ export const ADVANTAGE_TYPES = [
   "Immunity Idol",
   "Extra Vote",
   "Beware Advantage",
-  "Idol Clue",
+  "Advantage Clue",
   "Steal a Vote",
   "Block a Vote",
   "Idol Nullifier",
@@ -27,7 +27,7 @@ export const ADVANTAGE_COLORS: Record<AdvantageType, string> = {
   "Immunity Idol": "#B8860B", // bronze/goldenrod
   "Extra Vote": "#4A90D9", // blue
   "Beware Advantage": "#D64545", // red/crimson
-  "Idol Clue": "#C9C24B", // olive/chartreuse
+  "Advantage Clue": "#C9C24B", // olive/chartreuse
   "Steal a Vote": "#D6449E", // magenta/pink
   "Block a Vote": "#8E44AD", // purple
   "Idol Nullifier": "#D9822B", // orange/amber
