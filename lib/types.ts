@@ -31,7 +31,7 @@ export const ADVANTAGE_COLORS: Record<AdvantageType, string> = {
   "Steal a Vote": "#D6449E", // magenta/pink
   "Block a Vote": "#8E44AD", // purple
   "Idol Nullifier": "#D9822B", // orange/amber
-  "Knowledge is Power": "#6B4226", // brown/chestnut
+  "Knowledge is Power": "#D9D9D9", // whitish grey
 };
 
 export interface SurvivorAdvantage {
