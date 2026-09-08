@@ -41,12 +41,20 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
 - **Advantages** are their own table (`survivor_advantages`), not a field on
   `survivors`, so a survivor can hold several at once (e.g. an Idol AND an
   Extra Vote). Rows get `status = 'used'` rather than being deleted.
+- **Tribes** are a season-scoped table (`tribes`: name + color), not free
+  text. `survivors.current_tribe_id` references it (`on delete set null`,
+  so deleting a tribe just unassigns its members rather than blocking or
+  cascading). `survivors.original_tribe` stays plain text — it's a one-time
+  snapshot from the Season Setup CSV and is never tribe-referenced. A null
+  `current_tribe_id` renders as "No tribe" with no color styling.
 
 ## Admin page (`/admin`, gated by `users.is_admin`)
 
 - **Season Setup**: upload `survivors_s{N}.csv` (e.g. `survivors_s51.csv`).
   Full replace, scoped to only that one season (creates the season if it
-  doesn't exist). Headers: `name,photo_url,original_tribe`.
+  doesn't exist). Headers: `name,photo_url,original_tribe`. Survivors start
+  with `current_tribe_id = null` — assign real tribes afterward via
+  Assign Tribes, since tribes don't exist yet at CSV-upload time.
 - **Season Control**: add episodes, set the active one, lock/unlock, view
   picks by user per episode.
 - **Event Type Setup**: upload `event_types_s{N}.csv`. Event types are
@@ -54,6 +62,14 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   uploader's own record-keeping. "Full replace" is implemented as
   deactivate-all-then-upsert (matched on `category`+`name`), never a hard
   delete, so it can't break events that already reference an old row.
+- **Update Survivors**: per-survivor eliminated / Shot in the Dark / current
+  tribe (dropdown, populated from Assign Tribes) / advantages, all saved
+  immediately (no separate save step).
+- **Assign Tribes**: add/rename/recolor/delete this season's tribes, and
+  drag survivors between tribe columns (native HTML5 drag-and-drop, no
+  added dependency) to set `current_tribe_id`. Used for starting tribes,
+  mid-season swaps, and the merge — all just "tribes," no special merge
+  concept in the data model.
 - Templates for both CSVs are in `/templates`.
 
 ## Design system

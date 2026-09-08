@@ -96,7 +96,8 @@ export async function POST(req: NextRequest) {
     name: r.name!,
     photo_url: r.photo_url,
     original_tribe: r.original_tribe,
-    current_tribe: r.original_tribe, // tribes haven't swapped yet at initial setup
+    // current_tribe_id starts unset (null) — assign real tribes afterward
+    // via Admin > Assign Tribes, once that season's tribes exist.
     shot_in_the_dark: true, // everyone starts the season eligible
   }));
 

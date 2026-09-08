@@ -55,7 +55,7 @@ Supabase SQL Editor:
 update users set is_admin = true where name = 'Your Name';
 ```
 
-The Admin page has three tabs:
+The Admin page has five tabs:
 
 ### Season Setup — survivor roster via CSV
 
@@ -71,9 +71,9 @@ season doesn't exist yet, it's created automatically. This is a **full
 replace, scoped to that one season only**: every existing survivor for that
 season is deleted (cascading to any picks/events/advantages tied to them)
 before the new roster is inserted — other seasons are never touched. There's
-a confirmation checkbox in the UI before this runs. `current_tribe` is set
-equal to `original_tribe` on import, since tribes haven't swapped yet at
-initial setup.
+a confirmation checkbox in the UI before this runs. Survivors start with no
+current tribe assigned (tribes don't exist yet at CSV-upload time) — assign
+them afterward in Assign Tribes.
 
 ### Season Control — episodes and picks
 
@@ -104,12 +104,21 @@ upserted (matched on `category` + `name`) as active. Rows already referenced
 by logged events are never deleted, only deactivated, so past scores can
 never be broken by a balance-change upload.
 
-### Still manual (for now)
+### Update Survivors — eliminate, Shot in the Dark, tribe, advantages
 
-**Advantages** are still added directly in Supabase's Table Editor
-(`survivor_advantages` table) — they change constantly during an episode and
-a CSV round-trip would be slower than editing the row directly. See the
-comments in `sql/schema.sql` for the insert format.
+Per-survivor controls, all saved immediately (no separate save step):
+eliminated status, Shot in the Dark availability, current tribe (a dropdown
+populated from Assign Tribes), and advantages — grant a new one, mark an
+active one used, or remove one entirely (for correcting a mistaken add;
+distinct from marking it used, which keeps the row for history).
+
+### Assign Tribes — manage tribes and drag survivors onto them
+
+Add, rename, recolor, or delete this season's tribes (starting tribes, a
+swap, or the merge — all just "tribes," no special case for any of them),
+then drag survivor chips between tribe columns to assign them. Deleting a
+tribe unassigns its members back to "No tribe" rather than blocking the
+delete or touching the survivors themselves.
 
 ---
 
@@ -194,13 +203,14 @@ app/
   picks/page.tsx           My Picks (draft + survivor reference)
   scores/page.tsx           Scores (stacked bar charts, by player/survivor)
   events/page.tsx            Enter Events (open to all signed-in users)
-  admin/page.tsx              Admin: Season Setup / Season Control / Event Type Setup
+  admin/page.tsx              Admin: Season Setup / Control / Event Types / Update Survivors / Assign Tribes
   login/page.tsx                Simple name-based sign-in
   api/
     seasons/current/           Current season (highest season number)
     episodes/                   List/create episodes (current season)
     episodes/[id]/                Lock/unlock, set active episode
-    survivors/                   List survivors + advantages (current season)
+    survivors/                   List survivors + tribe + advantages (current season)
+    tribes/                       List tribes (current season)
     event-types/                   Dynamic scoring reference table
     events/                          Log/undo events (snapshots point value)
     picks/                             Get/submit picks
@@ -211,6 +221,9 @@ app/
     admin/survivors-csv/                     Season Setup CSV upload
     admin/event-types-csv/                     Event Type Setup CSV upload
     admin/picks/                                 View picks by user (admin)
+    admin/survivors/[id]/                         Update eliminated/Shot in the Dark/tribe
+    admin/advantages/, admin/advantages/[id]/       Grant/mark-used/remove advantages
+    admin/tribes/, admin/tribes/[id]/                 Add/rename/recolor/delete tribes
 lib/
   supabaseAdmin.ts        Server-only Supabase client (service role key)
   currentSeason.ts          Resolves "current" = highest season number

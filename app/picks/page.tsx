@@ -298,6 +298,11 @@ export default function PicksPage() {
                   ? "border-gold/50 bg-surface"
                   : "border-surface2 bg-surface/50"
               }`}
+              style={
+                s.current_tribe
+                  ? { borderLeftColor: s.current_tribe.color, borderLeftWidth: "4px" }
+                  : undefined
+              }
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
@@ -310,8 +315,8 @@ export default function PicksPage() {
                       )}
                     </p>
                     <p className="text-xs text-muted">
-                      {s.current_tribe || "No tribe"}
-                      {s.original_tribe && s.original_tribe !== s.current_tribe
+                      {s.current_tribe?.name || "No tribe"}
+                      {s.original_tribe && s.original_tribe !== s.current_tribe?.name
                         ? ` (orig. ${s.original_tribe})`
                         : ""}
                     </p>

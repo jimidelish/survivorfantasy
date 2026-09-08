@@ -41,13 +41,21 @@ export interface SurvivorAdvantage {
   status: "active" | "used";
 }
 
+export interface Tribe {
+  id: string;
+  season_id: string;
+  name: string;
+  color: string;
+}
+
 export interface Survivor {
   id: string;
   season_id: string;
   name: string;
   photo_url: string | null;
   original_tribe: string | null;
-  current_tribe: string | null;
+  current_tribe_id: string | null;
+  current_tribe: Tribe | null;
   eliminated: boolean;
   shot_in_the_dark: boolean;
   has_vote: boolean;

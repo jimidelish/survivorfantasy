@@ -1,10 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { AppUser, Episode, Season, Survivor, ADVANTAGE_TYPES, LOCAL_STORAGE_KEY } from "@/lib/types";
+import {
+  AppUser,
+  Episode,
+  Season,
+  Survivor,
+  Tribe,
+  ADVANTAGE_TYPES,
+  LOCAL_STORAGE_KEY,
+} from "@/lib/types";
 import CsvUpload from "@/components/CsvUpload";
 
-type Tab = "setup" | "control" | "eventTypes" | "updateSurvivors";
+type Tab = "setup" | "control" | "eventTypes" | "updateSurvivors" | "assignTribes";
 
 interface UserPicksGroup {
   user_id: string;
@@ -49,6 +57,7 @@ export default function AdminPage() {
           { id: "control", label: "Season Control" },
           { id: "eventTypes", label: "Event Type Setup" },
           { id: "updateSurvivors", label: "Update Survivors" },
+          { id: "assignTribes", label: "Assign Tribes" },
         ].map((t) => (
           <button
             key={t.id}
@@ -69,6 +78,7 @@ export default function AdminPage() {
         {tab === "control" && <SeasonControlTab />}
         {tab === "eventTypes" && <EventTypeSetupTab />}
         {tab === "updateSurvivors" && <UpdateSurvivorsTab />}
+        {tab === "assignTribes" && <AssignTribesTab />}
       </div>
     </div>
   );
@@ -312,20 +322,25 @@ function SeasonControlTab() {
 
 function UpdateSurvivorsTab() {
   const [survivors, setSurvivors] = useState<Survivor[]>([]);
+  const [tribes, setTribes] = useState<Tribe[]>([]);
   const [loading, setLoading] = useState(true);
 
   function refresh() {
-    fetch("/api/survivors")
-      .then((r) => r.json())
-      .then(setSurvivors)
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch("/api/survivors").then((r) => r.json()),
+      fetch("/api/tribes").then((r) => r.json()),
+    ]).then(([survs, tribeList]) => {
+      setSurvivors(survs);
+      setTribes(tribeList);
+      setLoading(false);
+    });
   }
 
   useEffect(refresh, []);
 
   async function updateSurvivor(
     id: string,
-    update: { eliminated?: boolean; shot_in_the_dark?: boolean; current_tribe?: string | null }
+    update: { eliminated?: boolean; shot_in_the_dark?: boolean; current_tribe_id?: string | null }
   ) {
     await fetch(`/api/admin/survivors/${id}`, {
       method: "PATCH",
@@ -371,6 +386,7 @@ function UpdateSurvivorsTab() {
           <SurvivorRow
             key={s.id}
             survivor={s}
+            tribes={tribes}
             onUpdate={(update) => updateSurvivor(s.id, update)}
             onAddAdvantage={(type) => addAdvantage(s.id, type)}
             onSetAdvantageStatus={setAdvantageStatus}
@@ -384,29 +400,24 @@ function UpdateSurvivorsTab() {
 
 function SurvivorRow({
   survivor,
+  tribes,
   onUpdate,
   onAddAdvantage,
   onSetAdvantageStatus,
   onRemoveAdvantage,
 }: {
   survivor: Survivor;
+  tribes: Tribe[];
   onUpdate: (update: {
     eliminated?: boolean;
     shot_in_the_dark?: boolean;
-    current_tribe?: string | null;
+    current_tribe_id?: string | null;
   }) => void;
   onAddAdvantage: (type: string) => void;
   onSetAdvantageStatus: (advantageId: string, status: "active" | "used") => void;
   onRemoveAdvantage: (advantageId: string) => void;
 }) {
-  const [tribe, setTribe] = useState(survivor.current_tribe || "");
   const [newAdvantageType, setNewAdvantageType] = useState<string>(ADVANTAGE_TYPES[0]);
-
-  useEffect(() => {
-    setTribe(survivor.current_tribe || "");
-  }, [survivor.current_tribe]);
-
-  const tribeDirty = tribe !== (survivor.current_tribe || "");
 
   return (
     <div
@@ -441,18 +452,24 @@ function SurvivorRow({
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <label className="text-sm text-muted">Current tribe:</label>
-        <input
-          value={tribe}
-          onChange={(e) => setTribe(e.target.value)}
+        <select
+          value={survivor.current_tribe_id || ""}
+          onChange={(e) => onUpdate({ current_tribe_id: e.target.value || null })}
           className="rounded-md border border-surface2 bg-surface2 px-2 py-1 text-sm"
-        />
-        {tribeDirty && (
-          <button
-            onClick={() => onUpdate({ current_tribe: tribe || null })}
-            className="rounded-full bg-ember px-3 py-1 text-xs font-medium text-jungle hover:opacity-90"
-          >
-            Save
-          </button>
+        >
+          <option value="">No tribe</option>
+          {tribes.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name}
+            </option>
+          ))}
+        </select>
+        {survivor.current_tribe && (
+          <span
+            className="h-3 w-3 rounded-full border border-surface2"
+            style={{ backgroundColor: survivor.current_tribe.color }}
+            title={survivor.current_tribe.name}
+          />
         )}
       </div>
 
@@ -512,6 +529,239 @@ function SurvivorRow({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AssignTribesTab() {
+  const [survivors, setSurvivors] = useState<Survivor[]>([]);
+  const [tribes, setTribes] = useState<Tribe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newTribeName, setNewTribeName] = useState("");
+  const [newTribeColor, setNewTribeColor] = useState("#C9A24C");
+  const [dragOverKey, setDragOverKey] = useState<string | null>(null);
+
+  function refresh() {
+    Promise.all([
+      fetch("/api/survivors").then((r) => r.json()),
+      fetch("/api/tribes").then((r) => r.json()),
+    ]).then(([survs, tribeList]) => {
+      setSurvivors(survs);
+      setTribes(tribeList);
+      setLoading(false);
+    });
+  }
+
+  useEffect(refresh, []);
+
+  async function addTribe(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newTribeName.trim()) return;
+    await fetch("/api/admin/tribes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newTribeName.trim(), color: newTribeColor }),
+    });
+    setNewTribeName("");
+    refresh();
+  }
+
+  async function renameTribe(id: string, name: string) {
+    await fetch(`/api/admin/tribes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    });
+    refresh();
+  }
+
+  async function recolorTribe(id: string, color: string) {
+    await fetch(`/api/admin/tribes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ color }),
+    });
+    refresh();
+  }
+
+  async function deleteTribe(id: string) {
+    await fetch(`/api/admin/tribes/${id}`, { method: "DELETE" });
+    refresh();
+  }
+
+  async function assignSurvivor(survivorId: string, tribeId: string | null) {
+    await fetch(`/api/admin/survivors/${survivorId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ current_tribe_id: tribeId }),
+    });
+    refresh();
+  }
+
+  function handleDrop(e: React.DragEvent, tribeId: string | null) {
+    e.preventDefault();
+    setDragOverKey(null);
+    const survivorId = e.dataTransfer.getData("text/plain");
+    if (survivorId) assignSurvivor(survivorId, tribeId);
+  }
+
+  if (loading) return <p className="text-sm text-muted">Loading…</p>;
+
+  const unassigned = survivors.filter((s) => !s.current_tribe_id);
+
+  return (
+    <div>
+      <p className="text-sm text-muted">
+        Add tribes for this season — starting tribes, swap tribes, or the merge — then drag
+        survivors between columns to assign them. Deleting a tribe unassigns its members back to
+        &quot;No tribe&quot; rather than removing them from the season.
+      </p>
+
+      <form onSubmit={addTribe} className="mt-6 flex flex-wrap items-center gap-2">
+        <input
+          value={newTribeName}
+          onChange={(e) => setNewTribeName(e.target.value)}
+          placeholder="Tribe name"
+          className="rounded-md border border-surface2 bg-surface px-3 py-2 text-sm"
+        />
+        <input
+          type="color"
+          value={newTribeColor}
+          onChange={(e) => setNewTribeColor(e.target.value)}
+          className="h-9 w-12 cursor-pointer rounded-md border border-surface2 bg-surface"
+          title="Tribe color"
+        />
+        <button
+          type="submit"
+          className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90"
+        >
+          Add tribe
+        </button>
+      </form>
+
+      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <TribeColumn
+          tribe={null}
+          survivors={unassigned}
+          isDragOver={dragOverKey === "unassigned"}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragOverKey("unassigned");
+          }}
+          onDragLeave={() => setDragOverKey(null)}
+          onDrop={(e) => handleDrop(e, null)}
+        />
+        {tribes.map((t) => (
+          <TribeColumn
+            key={t.id}
+            tribe={t}
+            survivors={survivors.filter((s) => s.current_tribe_id === t.id)}
+            isDragOver={dragOverKey === t.id}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setDragOverKey(t.id);
+            }}
+            onDragLeave={() => setDragOverKey(null)}
+            onDrop={(e) => handleDrop(e, t.id)}
+            onRename={(name) => renameTribe(t.id, name)}
+            onRecolor={(color) => recolorTribe(t.id, color)}
+            onDelete={() => deleteTribe(t.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TribeColumn({
+  tribe,
+  survivors,
+  isDragOver,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onRename,
+  onRecolor,
+  onDelete,
+}: {
+  tribe: Tribe | null;
+  survivors: Survivor[];
+  isDragOver: boolean;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onRename?: (name: string) => void;
+  onRecolor?: (color: string) => void;
+  onDelete?: () => void;
+}) {
+  const [name, setName] = useState(tribe?.name || "");
+
+  useEffect(() => {
+    setName(tribe?.name || "");
+  }, [tribe?.name]);
+
+  return (
+    <div
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      className={`rounded-md border px-4 py-4 transition-colors ${
+        isDragOver ? "border-gold bg-gold/5" : "border-surface2 bg-surface"
+      }`}
+      style={tribe ? { borderTopColor: tribe.color, borderTopWidth: "4px" } : undefined}
+    >
+      {tribe ? (
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            value={tribe.color}
+            onChange={(e) => onRecolor?.(e.target.value)}
+            className="h-7 w-9 cursor-pointer rounded border border-surface2 bg-surface"
+            title="Recolor tribe"
+          />
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            onBlur={() => name.trim() && name !== tribe.name && onRename?.(name.trim())}
+            className="flex-1 rounded-md border border-surface2 bg-surface2 px-2 py-1 text-sm font-display"
+          />
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-full border border-rust/50 px-2 py-1 text-xs text-rust hover:bg-rust/10"
+            title="Delete tribe"
+          >
+            Delete
+          </button>
+        </div>
+      ) : (
+        <p className="font-display text-lg text-muted">No tribe</p>
+      )}
+
+      <div className="mt-3 min-h-[3rem] space-y-1.5">
+        {survivors.map((s) => (
+          <SurvivorChip key={s.id} survivor={s} />
+        ))}
+        {survivors.length === 0 && <p className="text-xs text-muted">Drag survivors here</p>}
+      </div>
+    </div>
+  );
+}
+
+function SurvivorChip({ survivor }: { survivor: Survivor }) {
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData("text/plain", survivor.id);
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      className={`cursor-grab rounded-md border border-surface2 bg-surface2 px-3 py-1.5 text-sm active:cursor-grabbing ${
+        survivor.eliminated ? "opacity-50" : ""
+      }`}
+    >
+      {survivor.name}
+      {survivor.eliminated && <span className="ml-2 text-[10px] text-rust">Eliminated</span>}
     </div>
   );
 }

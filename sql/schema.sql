@@ -33,6 +33,27 @@ create table if not exists users (
 );
 
 -- ============================================================
+-- TRIBES
+-- Scoped to a season. Created/renamed/recolored/deleted via
+-- Admin > Assign Tribes as swaps and the merge happen through the season.
+-- Deleting a tribe just unassigns its members (current_tribe_id -> null,
+-- rendered as "no tribe" / default styling) rather than blocking the
+-- delete or cascading. `original_tribe` on survivors is NOT a reference
+-- to this table — it's a plain text snapshot of the starting tribe from
+-- the season-setup CSV and never changes after import.
+-- ============================================================
+create table if not exists tribes (
+  id uuid primary key default gen_random_uuid(),
+  season_id uuid not null references seasons(id) on delete cascade,
+  name text not null,
+  color text not null, -- hex, e.g. '#7B3FA0'
+  created_at timestamptz not null default now(),
+  unique (season_id, name)
+);
+
+create index if not exists idx_tribes_season on tribes(season_id);
+
+-- ============================================================
 -- SURVIVORS
 -- Scoped to a season since the cast is different every time.
 -- ============================================================
@@ -42,7 +63,7 @@ create table if not exists survivors (
   name text not null,
   photo_url text,
   original_tribe text,
-  current_tribe text,
+  current_tribe_id uuid references tribes(id) on delete set null,
   eliminated boolean not null default false,
   shot_in_the_dark boolean not null default false,
   has_vote boolean not null default true, -- false = hit with a "no vote" twist/punishment
