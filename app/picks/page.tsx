@@ -156,7 +156,9 @@ export default function PicksPage() {
   if (loading) return <p className="text-sm text-muted">Loading roster…</p>;
   if (!user) return null;
 
-  const activeSurvivors = survivors.filter((s) => !s.eliminated);
+  // Eliminated survivors are kept in the list (greyed out, sorted last) rather
+  // than removed, so a player can still see who's out. `/api/survivors`
+  // already orders eliminated last, so no re-sort is needed here.
 
   return (
     <div>
@@ -278,7 +280,7 @@ export default function PicksPage() {
       <div className="mt-8 rope-divider" />
 
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {activeSurvivors.map((s) => {
+        {survivors.map((s) => {
           const multiplier = picks[s.id] || 0;
           const stats = survivorStats.get(s.id);
           const activeAdvantages = (s.advantages || []).filter((a) => a.status === "active");
@@ -289,14 +291,23 @@ export default function PicksPage() {
             <div
               key={s.id}
               className={`rounded-md border px-4 py-4 ${
-                multiplier > 0 ? "border-gold/50 bg-surface" : "border-surface2 bg-surface/50"
+                s.eliminated
+                  ? "border-surface2 bg-surface/20 opacity-50"
+                  : multiplier > 0
+                  ? "border-gold/50 bg-surface"
+                  : "border-surface2 bg-surface/50"
               }`}
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-3">
                   <SurvivorAvatar name={s.name} photoUrl={s.photo_url} />
                   <div>
-                    <p className="font-display text-lg">{s.name}</p>
+                    <p className="font-display text-lg">
+                      {s.name}
+                      {s.eliminated && (
+                        <span className="ml-2 text-xs font-normal text-rust">Eliminated</span>
+                      )}
+                    </p>
                     <p className="text-xs text-muted">
                       {s.current_tribe || "No tribe"}
                       {s.original_tribe && s.original_tribe !== s.current_tribe
@@ -309,7 +320,7 @@ export default function PicksPage() {
                   <button
                     type="button"
                     onClick={() => adjust(s.id, -1)}
-                    disabled={multiplier === 0 || currentEpisode?.locked}
+                    disabled={s.eliminated || multiplier === 0 || currentEpisode?.locked}
                     className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
                     aria-label={`Decrease ${s.name} multiplier`}
                   >
@@ -321,7 +332,7 @@ export default function PicksPage() {
                   <button
                     type="button"
                     onClick={() => adjust(s.id, 1)}
-                    disabled={!canIncrease || currentEpisode?.locked}
+                    disabled={s.eliminated || !canIncrease || currentEpisode?.locked}
                     className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
                     aria-label={`Increase ${s.name} multiplier`}
                   >
@@ -334,7 +345,7 @@ export default function PicksPage() {
                 <span>Points: {stats?.total ?? 0}</span>
                 <span>Avg: {stats ? stats.average.toFixed(1) : "0.0"}</span>
                 <span className={s.shot_in_the_dark ? "text-gold" : "text-muted"}>
-                  {s.shot_in_the_dark ? "Shot in the Dark: eligible" : "Shot in the Dark: not eligible"}
+                  {s.shot_in_the_dark ? "Shot in the Dark: available" : "Shot in the Dark: used"}
                 </span>
                 <span className={s.has_vote ? "text-muted" : "text-rust"}>
                   {s.has_vote ? "Can vote" : "No vote"}
