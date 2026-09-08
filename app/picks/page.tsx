@@ -8,6 +8,7 @@ import {
   Survivor,
   LOCAL_STORAGE_KEY,
   MAX_MULTIPLIER_PER_SURVIVOR,
+  ADVANTAGE_COLORS,
 } from "@/lib/types";
 
 interface Budget {
@@ -361,7 +362,11 @@ export default function PicksPage() {
                   activeAdvantages.map((a) => (
                     <span
                       key={a.id}
-                      className="rounded-full border border-gold/40 px-2 py-0.5 text-[11px] text-gold"
+                      className="rounded-full border px-2 py-0.5 text-[11px]"
+                      style={{
+                        borderColor: `${ADVANTAGE_COLORS[a.type]}66`,
+                        color: ADVANTAGE_COLORS[a.type],
+                      }}
                     >
                       {a.type}
                     </span>

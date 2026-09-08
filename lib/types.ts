@@ -22,6 +22,18 @@ export const ADVANTAGE_TYPES = [
 ] as const;
 export type AdvantageType = (typeof ADVANTAGE_TYPES)[number];
 
+// One distinct color per advantage type, used for the tag pills on My Picks.
+export const ADVANTAGE_COLORS: Record<AdvantageType, string> = {
+  "Immunity Idol": "#B8860B", // bronze/goldenrod
+  "Extra Vote": "#4A90D9", // blue
+  "Beware Advantage": "#8E44AD", // purple
+  "Idol Clue": "#E8B93D", // bright gold-yellow — same hue family as Immunity Idol's bronze
+  "Steal a Vote": "#D6449E", // magenta/pink
+  "Block a Vote": "#5B5EA6", // indigo
+  "Idol Nullifier": "#6E85A0", // slate blue-grey
+  "Knowledge is Power": "#C9C24B", // olive/chartreuse
+};
+
 export interface SurvivorAdvantage {
   id: string;
   survivor_id: string;
