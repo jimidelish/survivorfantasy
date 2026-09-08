@@ -32,6 +32,7 @@ export default function PicksPage() {
   const [survivors, setSurvivors] = useState<Survivor[]>([]);
   const [statsData, setStatsData] = useState<SurvivorStatsResponse>({ episodes: [], series: [] });
   const [picks, setPicks] = useState<Record<string, number>>({});
+  const [savedPicks, setSavedPicks] = useState<Record<string, number>>({});
   const [budget, setBudget] = useState<Budget | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -70,6 +71,7 @@ export default function PicksPage() {
         const next: Record<string, number> = {};
         for (const p of data) next[p.survivor_id] = p.multiplier;
         setPicks(next);
+        setSavedPicks(next);
       });
     fetch(`/api/picks/budget?user_id=${user.id}&episode_id=${episodeId}`)
       .then((r) => r.json())
@@ -102,6 +104,13 @@ export default function PicksPage() {
     [picks]
   );
   const remaining = budget ? budget.budget - totalUsed : 0;
+
+  const isDirty = useMemo(() => {
+    const keys = Object.keys(picks);
+    const savedKeys = Object.keys(savedPicks);
+    if (keys.length !== savedKeys.length) return true;
+    return keys.some((id) => picks[id] !== savedPicks[id]);
+  }, [picks, savedPicks]);
 
   function adjust(survivorId: string, delta: number) {
     const current = picks[survivorId] || 0;
@@ -141,6 +150,7 @@ export default function PicksPage() {
       return;
     }
     setMessage("Picks saved.");
+    setSavedPicks(picks);
   }
 
   if (loading) return <p className="text-sm text-muted">Loading roster…</p>;
@@ -175,6 +185,19 @@ export default function PicksPage() {
             Picks are locked for this episode
           </span>
         )}
+
+        <div className="ml-auto flex items-center gap-3">
+          <span className={`text-xs ${isDirty ? "text-gold" : "text-muted"}`}>
+            {saving ? "Saving…" : isDirty ? "Unsaved changes" : "Saved"}
+          </span>
+          <button
+            onClick={submit}
+            disabled={saving || !budget || totalUsed !== budget.budget || currentEpisode?.locked}
+            className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle transition-opacity hover:opacity-90 disabled:opacity-40"
+          >
+            {saving ? "Saving…" : "Save picks"}
+          </button>
+        </div>
       </div>
 
       {budget && (
