@@ -62,11 +62,23 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data);
 }
 
+// Pass `id` to undo a single event, or `episode_id` to clear every event
+// logged for that episode at once (used by Enter Events' "Clear all events").
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
-  if (!id) return NextResponse.json({ error: "id query param is required." }, { status: 400 });
+  const episodeId = req.nextUrl.searchParams.get("episode_id");
 
-  const { error } = await supabaseAdmin.from("events").delete().eq("id", id);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  if (id) {
+    const { error } = await supabaseAdmin.from("events").delete().eq("id", id);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (episodeId) {
+    const { error } = await supabaseAdmin.from("events").delete().eq("episode_id", episodeId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
+
+  return NextResponse.json({ error: "id or episode_id query param is required." }, { status: 400 });
 }

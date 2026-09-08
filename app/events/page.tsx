@@ -151,6 +151,19 @@ export default function EventsPage() {
     setEvents((prev) => prev.filter((ev) => ev.id !== id));
   }
 
+  async function clearAllEvents() {
+    if (!episodeId || events.length === 0) return;
+    const label = currentEpisode
+      ? `Episode ${currentEpisode.number}${currentEpisode.title ? ` — ${currentEpisode.title}` : ""}`
+      : "this episode";
+    const confirmed = window.confirm(
+      `Delete all ${events.length} event(s) logged for ${label}? This cannot be undone.`
+    );
+    if (!confirmed) return;
+    await fetch(`/api/events?episode_id=${episodeId}`, { method: "DELETE" });
+    setEvents([]);
+  }
+
   if (!user) return null;
 
   const eventCount = selectedSurvivorIds.size * selectedEventTypeIds.size;
@@ -291,7 +304,14 @@ export default function EventsPage() {
       {error && <p className="mt-3 text-sm text-rust">{error}</p>}
 
       <div className="mt-10">
-        <h2 className="font-display text-xl font-semibold">Events this episode</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-xl font-semibold">Events this episode</h2>
+          {events.length > 0 && (
+            <button onClick={clearAllEvents} className="text-xs text-rust hover:underline">
+              Clear all events
+            </button>
+          )}
+        </div>
         {events.length === 0 ? (
           <p className="mt-3 text-sm text-muted">Nothing logged yet.</p>
         ) : (
