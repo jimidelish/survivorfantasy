@@ -344,7 +344,11 @@ export default function PicksPage() {
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                 <span>Points: {stats?.total ?? 0}</span>
                 <span>Avg: {stats ? stats.average.toFixed(1) : "0.0"}</span>
-                <span className={s.shot_in_the_dark ? "text-gold" : "text-muted"}>
+                <span
+                  className={
+                    s.shot_in_the_dark ? "text-gold" : "text-muted/50 line-through"
+                  }
+                >
                   {s.shot_in_the_dark ? "Shot in the Dark: available" : "Shot in the Dark: used"}
                 </span>
                 <span className={s.has_vote ? "text-muted" : "text-rust"}>
