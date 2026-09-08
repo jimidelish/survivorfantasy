@@ -1,11 +1,69 @@
 category,name,point_value
-Challenge,Won individual immunity,5
-Challenge,Won team/tribe immunity,3
-Challenge,Won reward challenge,2
-Advantage,Found hidden immunity idol,3
-Advantage,Played idol successfully,4
-Advantage,Found an advantage (any type),2
-Strategy,Made a big strategic move,2
-Tribal Council,Received a vote at tribal council,-1
-Tribal Council,Voted out,-5
-Other,Eliminated (medical or quit),-5
+Jeff,Heckles or Berates Them,5
+Jeff,Is Impressed,5
+Jeff,Touches their Shoulders,5
+Jeff,Hugs Them,10
+Physical Action,Cries,4
+Physical Action,Rolls Eyes,3
+Physical Action,Sing or Dance,3
+Physical Action,Climbs Tree,10
+Physical Action,Gets Drunk or Tipsy,10
+Physical Action,Makes Fire,10
+Physical Action,Perfect Dive,5
+Physical Action,Wardrobe Malfunction,10
+Physical Action,Trips or Falls,5
+Physical Action,Catches Animal or Sea Life,12
+Vocal,Swears,2
+Vocal,Reads Tree Mail,5
+Vocal,Has a (Liz style) Meltdown,15
+Vocal,Mentions Family or Partner,4
+Vocal,Mentions Anxiety,4
+Vocal,Mentions Astrology,5
+Vocal,Mentions Occupation,3
+Vocal,Mentions Religion & Survivor gods,3
+Vocal,Mentions Resume or My Game,3
+Vocal,Mentions Alliance Name,5
+Vocal,Uses Gen Z or Gen Alpha Language,5
+Vocal,Mentions Previous Survivor,4
+Vocal,Mentions Episode Title,15
+Vocal,Mentions Music to my Ears,15
+Vocal,Mentions Rival or Annoyance with Rival,3
+Vocal,Mentions Line in the Sand,4
+Vocal,Mentions Target on my back,4
+Game Event,Gets a Special Edit,15
+Game Event,Gets Sob Story,10
+Game Event,Goes on Journey,5
+Game Event,Quits the Game,-10
+Game Event,Removed for Medical,10
+Game Event,Treated for Medical,10
+Game Event,Voted Out,15
+Game Event,Applause while Voted Out,5
+Advantages,Advantage Play Successful,10
+Advantages,Finds Advantage Clue,5
+Advantages,Finds Beware Advantage,2
+Advantages,Accepts Beware Advantage,3
+Advantages,Obtains Hidden Immunity Idol,10
+Advantages,Helps to Obtain Idol,5
+Advantages,Obtains Extra Vote,10
+Advantages,Obtains Steal a Vote,10
+Advantages,Obtains Block a Vote,10
+Advantages,Obtains Idol Nullifier,10
+Advantages,Obtains Knowledge is Power,10
+Advantages,Plays their Extra Vote,10
+Advantages,Plays their Steal a Vote,10
+Advantages,Plays their Block a Vote,10
+Advantages,Plays their Idol Nullifier,10
+Advantages,Plays their Knowledge is Power,10
+Advantages,Uses Shot in the Dark,10
+Advantages,Creates Fake Advantage,15
+Advantages,Gives/Uses for Someone Else,15
+Advantages,Shares Knowledge,1
+Challenges,Chosen for Reward,5
+Challenges,Hero(es) of the Challenge,5
+Challenges,Wins Team Challenge,5
+Challenges,Wins Firemaking,15
+Challenges,Wins Individual Challenge,15
+Game Event,Makes Final 3,15
+Game Event,Wins the Game,20
+Game Event,Gives Away Immunity Necklace,20
+Game Event,Loses their vote,3

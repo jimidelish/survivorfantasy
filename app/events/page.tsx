@@ -27,6 +27,7 @@ export default function EventsPage() {
   const [selectedSurvivorIds, setSelectedSurvivorIds] = useState<Set<string>>(new Set());
   const [selectedEventTypeIds, setSelectedEventTypeIds] = useState<Set<string>>(new Set());
   const [toggledTribeIds, setToggledTribeIds] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +72,15 @@ export default function EventsPage() {
       if (!groups.has(t.category)) groups.set(t.category, []);
       groups.get(t.category)!.push(t);
     }
-    return Array.from(groups.entries());
+    return Array.from(groups.entries())
+      .map(
+        ([category, types]) =>
+          [category, [...types].sort((a, b) => a.name.localeCompare(b.name))] as [
+            string,
+            EventType[]
+          ]
+      )
+      .sort((a, b) => a[0].localeCompare(b[0]));
   }, [eventTypes]);
 
   function toggleSurvivor(id: string) {
@@ -88,6 +97,15 @@ export default function EventsPage() {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleCategory(category: string) {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(category)) next.delete(category);
+      else next.add(category);
       return next;
     });
   }
@@ -252,36 +270,52 @@ export default function EventsPage() {
         </div>
 
         <p className="mt-8 font-display text-lg">What</p>
-        <div className="mt-2 space-y-4">
-          {groupedEventTypes.map(([category, types]) => (
-            <div key={category}>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted">{category}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {types.map((t) => {
-                  const checked = selectedEventTypeIds.has(t.id);
-                  return (
-                    <label
-                      key={t.id}
-                      className={`flex cursor-pointer items-center gap-2 rounded-md border px-3 py-1.5 text-sm ${
-                        checked
-                          ? "border-gold/50 bg-surface text-parchment"
-                          : "border-surface2 bg-surface/50 text-muted"
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleEventType(t.id)}
-                        className="h-4 w-4"
-                      />
-                      {t.name} ({t.point_value > 0 ? "+" : ""}
-                      {t.point_value})
-                    </label>
-                  );
-                })}
+        <div className="mt-2 space-y-2">
+          {groupedEventTypes.map(([category, types]) => {
+            const expanded = expandedCategories.has(category);
+            const checkedCount = types.filter((t) => selectedEventTypeIds.has(t.id)).length;
+            return (
+              <div key={category} className="rounded-md border border-surface2 bg-surface/50">
+                <button
+                  type="button"
+                  onClick={() => toggleCategory(category)}
+                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium text-parchment"
+                >
+                  <span>
+                    {category}
+                    {checkedCount > 0 && (
+                      <span className="ml-2 text-xs text-gold">({checkedCount})</span>
+                    )}
+                  </span>
+                  <span className="text-muted">{expanded ? "▲" : "▼"}</span>
+                </button>
+                {expanded && (
+                  <div className="space-y-1 border-t border-surface2 px-3 py-2">
+                    {types.map((t) => {
+                      const checked = selectedEventTypeIds.has(t.id);
+                      return (
+                        <label
+                          key={t.id}
+                          className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                            checked ? "bg-surface text-parchment" : "text-muted hover:bg-surface"
+                          }`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => toggleEventType(t.id)}
+                            className="h-4 w-4 shrink-0"
+                          />
+                          {t.name} ({t.point_value > 0 ? "+" : ""}
+                          {t.point_value})
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div className="mt-6 flex flex-wrap items-center gap-4">
