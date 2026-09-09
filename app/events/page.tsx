@@ -162,6 +162,7 @@ export default function EventsPage() {
     setSelectedSurvivorIds(new Set());
     setSelectedEventTypeIds(new Set());
     setToggledTribeIds(new Set());
+    setExpandedCategories(new Set());
   }
 
   async function undoEvent(id: string) {
@@ -290,7 +291,7 @@ export default function EventsPage() {
                   <span className="text-muted">{expanded ? "▲" : "▼"}</span>
                 </button>
                 {expanded && (
-                  <div className="space-y-1 border-t border-surface2 px-3 py-2">
+                  <div className="grid grid-cols-2 gap-1 border-t border-surface2 px-3 py-2">
                     {types.map((t) => {
                       const checked = selectedEventTypeIds.has(t.id);
                       return (
