@@ -102,9 +102,22 @@ export default function ScoringPage() {
       </div>
 
       <div className="mt-8 space-y-8">
-        {grouped.map(([category, types]) => (
+        {grouped.map(([category, types]) => {
+          const categoryHasChanges = types.some((t) => pendingEdits[t.id] !== undefined);
+          return (
           <div key={category}>
-            <h2 className="font-display text-xl font-semibold text-gold">{category}</h2>
+            <div className="flex flex-wrap items-center gap-3">
+              <h2 className="font-display text-xl font-semibold text-gold">{category}</h2>
+              {categoryHasChanges && (
+                <button
+                  type="button"
+                  onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                  className="text-xs text-gold underline hover:text-ember"
+                >
+                  Changes made — save at top
+                </button>
+              )}
+            </div>
             <div className="mt-3 rope-divider" />
             <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {types.map((t) => (
@@ -118,7 +131,8 @@ export default function ScoringPage() {
               ))}
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {user?.is_admin && (
