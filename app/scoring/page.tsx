@@ -8,6 +8,8 @@ export default function ScoringPage() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingEdits, setPendingEdits] = useState<Record<string, number>>({});
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -41,24 +43,63 @@ export default function ScoringPage() {
     return Array.from(groups.entries()).sort((a, b) => a[0].localeCompare(b[0]));
   }, [eventTypes]);
 
-  async function updatePointValue(id: string, pointValue: number) {
-    await fetch(`/api/admin/event-types/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ point_value: pointValue }),
+  function setPendingValue(id: string, value: number | undefined) {
+    setPendingEdits((prev) => {
+      const next = { ...prev };
+      if (value === undefined) delete next[id];
+      else next[id] = value;
+      return next;
     });
+  }
+
+  async function saveChanges() {
+    setSaving(true);
+    await Promise.all(
+      Object.entries(pendingEdits).map(([id, pointValue]) =>
+        fetch(`/api/admin/event-types/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ point_value: pointValue }),
+        })
+      )
+    );
+    setPendingEdits({});
+    setSaving(false);
     refresh();
   }
 
   if (loading) return <p className="text-sm text-muted">Loading scoring table…</p>;
 
+  const hasChanges = Object.keys(pendingEdits).length > 0;
+
   return (
     <div>
-      <h1 className="font-display text-3xl font-semibold">Scoring Table</h1>
-      <p className="mt-2 text-sm text-muted">
-        How survivors earn (or lose) points during an episode.
-        {user?.is_admin && " Point values below are editable."}
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-semibold">Scoring Table</h1>
+          <p className="mt-2 text-sm text-muted">
+            How survivors earn (or lose) points during an episode.
+            {user?.is_admin && " Point values below are editable."}
+          </p>
+        </div>
+        {user?.is_admin && (
+          <div className="flex items-center gap-3">
+            <span className={`text-xs ${hasChanges ? "text-gold" : "text-muted"}`}>
+              {saving ? "Saving…" : hasChanges ? "Changes made" : "All saved"}
+            </span>
+            {hasChanges && (
+              <button
+                type="button"
+                onClick={saveChanges}
+                disabled={saving}
+                className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90 disabled:opacity-40"
+              >
+                {saving ? "Saving…" : "Save changes"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       <div className="mt-8 space-y-8">
         {grouped.map(([category, types]) => (
@@ -71,7 +112,8 @@ export default function ScoringPage() {
                   key={t.id}
                   eventType={t}
                   editable={!!user?.is_admin}
-                  onSave={updatePointValue}
+                  pendingValue={pendingEdits[t.id]}
+                  onChange={setPendingValue}
                 />
               ))}
             </div>
@@ -122,44 +164,48 @@ export default function ScoringPage() {
 function ScoringRow({
   eventType,
   editable,
-  onSave,
+  pendingValue,
+  onChange,
 }: {
   eventType: EventType;
   editable: boolean;
-  onSave: (id: string, pointValue: number) => void;
+  pendingValue: number | undefined;
+  onChange: (id: string, value: number | undefined) => void;
 }) {
-  const [value, setValue] = useState(String(eventType.point_value));
+  const [text, setText] = useState(String(pendingValue ?? eventType.point_value));
 
   useEffect(() => {
-    setValue(String(eventType.point_value));
-  }, [eventType.point_value]);
+    setText(String(pendingValue ?? eventType.point_value));
+  }, [eventType.point_value, pendingValue]);
 
-  const numericValue = Number(value);
-  const dirty = value.trim() !== "" && !Number.isNaN(numericValue) && numericValue !== eventType.point_value;
+  function handleChange(v: string) {
+    setText(v);
+    const n = Number(v);
+    if (v.trim() !== "" && !Number.isNaN(n) && n !== eventType.point_value) {
+      onChange(eventType.id, n);
+    } else {
+      onChange(eventType.id, undefined);
+    }
+  }
+
+  const dirty = pendingValue !== undefined;
   const positive = eventType.point_value > 0;
   const negative = eventType.point_value < 0;
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-md border border-surface2 bg-surface px-4 py-3">
+    <div
+      className={`flex items-center justify-between gap-3 rounded-md border px-4 py-3 ${
+        dirty ? "border-gold/50 bg-surface" : "border-surface2 bg-surface"
+      }`}
+    >
       <span className="text-sm text-parchment">{eventType.name}</span>
       {editable ? (
-        <div className="flex shrink-0 items-center gap-2">
-          <input
-            type="number"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            className="w-16 rounded-md border border-surface2 bg-surface2 px-2 py-1 text-right text-sm"
-          />
-          {dirty && (
-            <button
-              type="button"
-              onClick={() => onSave(eventType.id, numericValue)}
-              className="rounded-full bg-ember px-2 py-1 text-xs font-medium text-jungle hover:opacity-90"
-            >
-              Save
-            </button>
-          )}
-        </div>
+        <input
+          type="number"
+          value={text}
+          onChange={(e) => handleChange(e.target.value)}
+          className="w-16 shrink-0 rounded-md border border-surface2 bg-surface2 px-2 py-1 text-right text-sm"
+        />
       ) : (
         <span
           className={`shrink-0 font-display text-sm ${
