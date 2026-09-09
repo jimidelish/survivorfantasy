@@ -146,7 +146,13 @@ create table if not exists events (
   event_type_id uuid not null references event_types(id) on delete restrict,
   point_value integer not null,
   entered_by_user_id uuid references users(id) on delete set null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  -- Set only for "trigger" event types (see lib/eventTriggers.ts). Records
+  -- exactly what this event automatically changed on the survivors/
+  -- survivor_advantages tables, so Undo and "Clear all events" can reverse
+  -- precisely that, not just guess at the current state. Null for every
+  -- other (non-trigger) event type.
+  trigger_effect jsonb
 );
 
 create index if not exists idx_events_episode on events(episode_id);

@@ -104,6 +104,15 @@ upserted (matched on `category` + `name`) as active. Rows already referenced
 by logged events are never deleted, only deactivated, so past scores can
 never be broken by a balance-change upload.
 
+**The first 21 rows are required and order-sensitive.** These are the
+"trigger" events — ones that also automatically update the survivor's row
+(grant/use an advantage, mark eliminated, change vote status) when logged,
+not just add points. The upload is rejected unless the first 21 rows'
+`category` and `name` exactly match the standard trigger list, in that
+exact order — only their `point_value` is free to change per season.
+Anything after row 21 is completely free-form, as before. See
+`lib/eventTriggers.ts` for the full list and what each one does.
+
 ### Update Survivors — eliminate, tribe, advantages
 
 Per-survivor controls, all saved immediately (no separate save step):
@@ -175,7 +184,13 @@ materialized/stored points table to keep in sync.
   combination in a single "Log event(s)" click, for scenes where several
   people do the same thing or one person does several things at once. A
   toggle button per tribe checks/unchecks all of that tribe's survivors at
-  once. Includes undo per logged event.
+  once. Includes undo per logged event, and "Clear all events" for the
+  whole episode. Some event types are "triggers" — logging them also
+  automatically updates the survivor (advantages, eliminated, vote status);
+  Undo and Clear all events reverse that automatically too. One trigger
+  needs more input than a checkbox can give (which advantage, given away or
+  used, and to whom), so it opens a small follow-up prompt right after
+  logging.
 
 ---
 
@@ -219,8 +234,10 @@ app/
     survivors/                   List survivors + tribe + advantages (current season)
     tribes/                       List tribes (current season)
     event-types/                   Dynamic scoring reference table
-    events/                          Get/undo events (snapshots point value)
-    events/bulk/                       Log events for every (survivor x event type) pair at once
+    events/                          Get events, undo/clear (reverses trigger_effect first)
+    events/bulk/                       Log events for every (survivor x event type) pair at once,
+                                          applying any trigger actions
+    events/[id]/advantage-transfer/      Completes the "given/used for someone else" trigger
     picks/                             Get/submit picks
     picks/budget/                      Compute a user's multiplier budget
     points/                              Per-episode points, by user or survivor
@@ -237,7 +254,9 @@ lib/
   currentSeason.ts          Resolves "current" = highest season number
   multiplierBudget.ts         Computes base 7 + behind-leader bonus
   csvFilenames.ts                Parses season number out of CSV filenames
-  types.ts                          Shared TypeScript types + game constants
+  eventTriggers.ts                 The 21 standard trigger events + what each does
+  triggerEngine.ts                   Applies/reverses a trigger's effect on a survivor
+  types.ts                             Shared TypeScript types + game constants
 components/
   NavBar.tsx               Season-aware header, admin link for admins
   StackedPointsChart.tsx      Recharts stacked bar chart (Scores page)

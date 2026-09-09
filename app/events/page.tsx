@@ -13,6 +13,12 @@ import {
 } from "@/lib/types";
 import SurvivorAvatar from "@/components/SurvivorAvatar";
 
+interface PendingTransfer {
+  event_id: string;
+  survivor_id: string;
+  survivor_name: string;
+}
+
 export default function EventsPage() {
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
@@ -30,6 +36,8 @@ export default function EventsPage() {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
+  const [pendingTransfers, setPendingTransfers] = useState<PendingTransfer[]>([]);
 
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -135,9 +143,16 @@ export default function EventsPage() {
     });
   }
 
+  function refreshSurvivors() {
+    fetch("/api/survivors")
+      .then((r) => r.json())
+      .then(setSurvivors);
+  }
+
   async function logEvents(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    setWarnings([]);
     if (!episodeId || !user || selectedSurvivorIds.size === 0 || selectedEventTypeIds.size === 0) {
       return;
     }
@@ -158,16 +173,27 @@ export default function EventsPage() {
       setError(data.error || "Something went wrong.");
       return;
     }
-    setEvents((prev) => [...data, ...prev]);
+    setEvents((prev) => [...data.events, ...prev]);
+    setWarnings(data.warnings || []);
+    setPendingTransfers(data.pendingTransfers || []);
+    if ((data.pendingTransfers || []).length > 0 || (data.warnings || []).length > 0) {
+      refreshSurvivors();
+    }
     setSelectedSurvivorIds(new Set());
     setSelectedEventTypeIds(new Set());
     setToggledTribeIds(new Set());
     setExpandedCategories(new Set());
   }
 
+  function resolveTransfer() {
+    setPendingTransfers((prev) => prev.slice(1));
+    refreshSurvivors();
+  }
+
   async function undoEvent(id: string) {
     await fetch(`/api/events?id=${id}`, { method: "DELETE" });
     setEvents((prev) => prev.filter((ev) => ev.id !== id));
+    refreshSurvivors();
   }
 
   async function clearAllEvents() {
@@ -181,6 +207,7 @@ export default function EventsPage() {
     if (!confirmed) return;
     await fetch(`/api/events?episode_id=${episodeId}`, { method: "DELETE" });
     setEvents([]);
+    refreshSurvivors();
   }
 
   if (!user) return null;
@@ -337,6 +364,15 @@ export default function EventsPage() {
         </div>
       </form>
       {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+      {warnings.length > 0 && (
+        <ul className="mt-3 space-y-1">
+          {warnings.map((w, i) => (
+            <li key={i} className="text-sm text-gold">
+              ⚠ {w}
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="mt-10">
         <div className="flex items-center justify-between">
@@ -371,6 +407,158 @@ export default function EventsPage() {
             ))}
           </ul>
         )}
+      </div>
+
+      {pendingTransfers[0] && (
+        <AdvantageTransferModal
+          key={pendingTransfers[0].event_id}
+          transfer={pendingTransfers[0]}
+          survivor={survivors.find((s) => s.id === pendingTransfers[0].survivor_id)}
+          allSurvivors={survivors}
+          onResolved={resolveTransfer}
+          onSkip={resolveTransfer}
+        />
+      )}
+    </div>
+  );
+}
+
+function AdvantageTransferModal({
+  transfer,
+  survivor,
+  allSurvivors,
+  onResolved,
+  onSkip,
+}: {
+  transfer: PendingTransfer;
+  survivor: Survivor | undefined;
+  allSurvivors: Survivor[];
+  onResolved: () => void;
+  onSkip: () => void;
+}) {
+  const activeAdvantages = (survivor?.advantages || []).filter((a) => a.status === "active");
+  const [advantageId, setAdvantageId] = useState(activeAdvantages[0]?.id || "");
+  const [disposition, setDisposition] = useState<"used" | "given">("used");
+  const [recipientId, setRecipientId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const recipientOptions = allSurvivors.filter((s) => s.id !== transfer.survivor_id && !s.eliminated);
+
+  async function submit() {
+    if (!advantageId || (disposition === "given" && !recipientId)) return;
+    setSubmitting(true);
+    setError(null);
+    const res = await fetch(`/api/events/${transfer.event_id}/advantage-transfer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        advantage_id: advantageId,
+        disposition,
+        recipient_survivor_id: disposition === "given" ? recipientId : undefined,
+      }),
+    });
+    const data = await res.json();
+    setSubmitting(false);
+    if (!res.ok) {
+      setError(data.error || "Something went wrong.");
+      return;
+    }
+    onResolved();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-jungle/80 px-4">
+      <div className="w-full max-w-md rounded-md border border-surface2 bg-surface px-5 py-5">
+        <h3 className="font-display text-lg">{transfer.survivor_name}</h3>
+        <p className="mt-1 text-xs text-muted">Advantage given to/used for someone else</p>
+
+        {activeAdvantages.length === 0 ? (
+          <p className="mt-4 text-sm text-muted">
+            {transfer.survivor_name} has no active advantages to choose from — you can resolve
+            this manually later in Admin &gt; Update Survivors.
+          </p>
+        ) : (
+          <>
+            <label className="mt-4 block text-xs text-muted">Which advantage?</label>
+            <select
+              value={advantageId}
+              onChange={(e) => setAdvantageId(e.target.value)}
+              className="mt-1 w-full rounded-md border border-surface2 bg-surface2 px-3 py-2 text-sm"
+            >
+              {activeAdvantages.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.type}
+                </option>
+              ))}
+            </select>
+
+            <label className="mt-4 block text-xs text-muted">Given away, or used themselves?</label>
+            <div className="mt-1 flex gap-2">
+              <button
+                type="button"
+                onClick={() => setDisposition("used")}
+                className={`flex-1 rounded-md border px-3 py-2 text-sm ${
+                  disposition === "used"
+                    ? "border-gold/50 bg-surface2 text-parchment"
+                    : "border-surface2 text-muted"
+                }`}
+              >
+                Used it themselves
+              </button>
+              <button
+                type="button"
+                onClick={() => setDisposition("given")}
+                className={`flex-1 rounded-md border px-3 py-2 text-sm ${
+                  disposition === "given"
+                    ? "border-gold/50 bg-surface2 text-parchment"
+                    : "border-surface2 text-muted"
+                }`}
+              >
+                Given to someone
+              </button>
+            </div>
+
+            {disposition === "given" && (
+              <>
+                <label className="mt-4 block text-xs text-muted">Given to whom?</label>
+                <select
+                  value={recipientId}
+                  onChange={(e) => setRecipientId(e.target.value)}
+                  className="mt-1 w-full rounded-md border border-surface2 bg-surface2 px-3 py-2 text-sm"
+                >
+                  <option value="">Select a survivor…</option>
+                  {recipientOptions.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+                </select>
+              </>
+            )}
+          </>
+        )}
+
+        {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+
+        <div className="mt-5 flex items-center justify-between gap-3">
+          <button type="button" onClick={onSkip} className="text-xs text-muted hover:text-rust">
+            Skip (resolve manually later)
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={
+              submitting ||
+              activeAdvantages.length === 0 ||
+              !advantageId ||
+              (disposition === "given" && !recipientId)
+            }
+            className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90 disabled:opacity-40"
+          >
+            {submitting ? "Saving…" : "Confirm"}
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import supabaseAdmin from "@/lib/supabaseAdmin";
+import { reverseTriggerEffect } from "@/lib/triggerEngine";
 
 export const dynamic = "force-dynamic";
 
@@ -64,17 +65,40 @@ export async function POST(req: NextRequest) {
 
 // Pass `id` to undo a single event, or `episode_id` to clear every event
 // logged for that episode at once (used by Enter Events' "Clear all events").
+// Either way, any trigger_effect on the event(s) being removed is reversed
+// first, so undoing/clearing a trigger event fully rolls back what it
+// automatically changed (eliminated status, advantages, vote status).
 export async function DELETE(req: NextRequest) {
   const id = req.nextUrl.searchParams.get("id");
   const episodeId = req.nextUrl.searchParams.get("episode_id");
 
   if (id) {
+    const { data: event } = await supabaseAdmin
+      .from("events")
+      .select("survivor_id, trigger_effect")
+      .eq("id", id)
+      .single();
+    if (event?.trigger_effect) {
+      await reverseTriggerEffect(event.survivor_id, event.trigger_effect as any);
+    }
+
     const { error } = await supabaseAdmin.from("events").delete().eq("id", id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });
   }
 
   if (episodeId) {
+    const { data: events } = await supabaseAdmin
+      .from("events")
+      .select("survivor_id, trigger_effect")
+      .eq("episode_id", episodeId);
+
+    for (const ev of events || []) {
+      if (ev.trigger_effect) {
+        await reverseTriggerEffect(ev.survivor_id, ev.trigger_effect as any);
+      }
+    }
+
     const { error } = await supabaseAdmin.from("events").delete().eq("episode_id", episodeId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });

@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import supabaseAdmin from "@/lib/supabaseAdmin";
+import { getTriggerAction } from "@/lib/eventTriggers";
+import { applyTrigger } from "@/lib/triggerEngine";
 
 // Logs one event per (survivor, event type) combination in a single request
 // — e.g. 3 survivors x 2 event types = 6 events — for scenes where several
 // people do the same thing, or one person does several things at once.
+// For any combination that's a "trigger" event type, also applies its
+// automatic effect (add/use an advantage, eliminate, change vote status)
+// and records what changed on that event row, so Undo can reverse it later.
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
@@ -57,5 +62,30 @@ export async function POST(req: NextRequest) {
     );
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json(data);
+
+  const warnings: string[] = [];
+  const pendingTransfers: { event_id: string; survivor_id: string; survivor_name: string }[] = [];
+
+  for (const ev of data || []) {
+    const category = (ev as any).event_types?.category;
+    const name = (ev as any).event_types?.name;
+    const survivorName = (ev as any).survivors?.name || "Survivor";
+    if (!category || !name) continue;
+
+    const action = getTriggerAction(category, name);
+    if (!action) continue;
+
+    if (action.kind === "advantage_transfer") {
+      pendingTransfers.push({ event_id: ev.id, survivor_id: ev.survivor_id, survivor_name: survivorName });
+      continue;
+    }
+
+    const { effect, warning } = await applyTrigger(ev.survivor_id, action);
+    if (warning) warnings.push(`${survivorName} — ${name}: ${warning}`);
+    if (effect) {
+      await supabaseAdmin.from("events").update({ trigger_effect: effect }).eq("id", ev.id);
+    }
+  }
+
+  return NextResponse.json({ events: data, warnings, pendingTransfers });
 }

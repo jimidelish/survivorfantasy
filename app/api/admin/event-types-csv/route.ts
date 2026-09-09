@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import Papa from "papaparse";
 import supabaseAdmin from "@/lib/supabaseAdmin";
 import { parseEventTypesFilename } from "@/lib/csvFilenames";
+import { EVENT_TRIGGERS } from "@/lib/eventTriggers";
 
 interface CsvRow {
   category?: string;
@@ -68,6 +69,36 @@ export async function POST(req: NextRequest) {
       { error: "No valid rows found. Expected headers: category, name, point_value." },
       { status: 400 }
     );
+  }
+
+  // The first EVENT_TRIGGERS.length rows must be exactly the standard
+  // trigger events (category + name), in this exact order — their
+  // point_value is free to vary per season, but their identity and
+  // position are not, since trigger behavior is matched by category+name
+  // in code (see lib/eventTriggers.ts), not read from the CSV.
+  if (rows.length < EVENT_TRIGGERS.length) {
+    return NextResponse.json(
+      {
+        error: `This file has ${rows.length} row(s), but the first ${EVENT_TRIGGERS.length} rows must be the standard trigger events, in order.`,
+      },
+      { status: 400 }
+    );
+  }
+  for (let i = 0; i < EVENT_TRIGGERS.length; i++) {
+    const expected = EVENT_TRIGGERS[i];
+    const actual = rows[i];
+    if (actual.category !== expected.category || actual.name !== expected.name) {
+      return NextResponse.json(
+        {
+          error:
+            `Row ${i + 1} must be "${expected.category} / ${expected.name}" (a standard trigger event), ` +
+            `but found "${actual.category} / ${actual.name}". The first ${EVENT_TRIGGERS.length} rows must ` +
+            `exactly match the standard trigger events, in order — only their point values may differ. ` +
+            `Rows after ${EVENT_TRIGGERS.length} are free-form.`,
+        },
+        { status: 400 }
+      );
+    }
   }
 
   // Deactivate everything currently active first.

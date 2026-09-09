@@ -39,6 +39,24 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   one call to `POST /api/events/bulk` (one scene, multiple people and/or
   multiple things at once) — there's no grouping concept above the
   individual `events` rows, so each one still undoes independently.
+- **Trigger events** (`lib/eventTriggers.ts`) are a fixed set of 21
+  (category, name) pairs that, beyond just logging, also automatically
+  change the survivor's row (add/mark-used an advantage, set `eliminated`,
+  change `has_vote`). Trigger identity and behavior are hardcoded in code
+  — never parsed from the uploaded CSV — because free-text "what this does"
+  can't safely become executable logic. `event_types_s{N}.csv` uploads
+  (Admin > Event Type Setup) are rejected unless their first 21 rows are
+  exactly these (category, name) pairs, in this exact order (only
+  `point_value` may differ). What actually changed is recorded on
+  `events.trigger_effect` (jsonb) so Undo and "Clear all events"
+  (`lib/triggerEngine.ts`'s `reverseTriggerEffect`) can reverse precisely
+  that, not just guess at current state. One trigger — "Advantage Given
+  to/Used for Someone Else" — can't apply automatically (needs to know
+  which advantage, given-or-used, and who to) and instead logs normally,
+  then surfaces a modal on the Enter Events page
+  (`POST /api/events/[id]/advantage-transfer` completes it). If a "Uses"
+  trigger fires with no matching active advantage to act on, the event
+  still logs — a warning is shown instead of blocking.
 - **"Active episode" ≠ "locked."** `episodes.is_current` (one true per season,
   enforced by a partial unique index) is what My Picks / Enter Events default
   to. `episodes.locked` is a separate flag controlling whether picks can
