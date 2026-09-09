@@ -1,69 +1,71 @@
-category,name,point_value
-Jeff,Heckles or Berates Them,5
-Jeff,Is Impressed,5
-Jeff,Touches their Shoulders,5
-Jeff,Hugs Them,10
-Physical Action,Cries,4
-Physical Action,Rolls Eyes,3
-Physical Action,Sing or Dance,3
-Physical Action,Climbs Tree,10
-Physical Action,Gets Drunk or Tipsy,10
-Physical Action,Makes Fire,10
-Physical Action,Perfect Dive,5
-Physical Action,Wardrobe Malfunction,10
-Physical Action,Trips or Falls,5
-Physical Action,Catches Animal or Sea Life,12
-Vocal,Swears,2
-Vocal,Reads Tree Mail,5
-Vocal,Has a (Liz style) Meltdown,15
-Vocal,Mentions Family or Partner,4
-Vocal,Mentions Anxiety,4
-Vocal,Mentions Astrology,5
-Vocal,Mentions Occupation,3
-Vocal,Mentions Religion & Survivor gods,3
-Vocal,Mentions Resume or My Game,3
-Vocal,Mentions Alliance Name,5
-Vocal,Uses Gen Z or Gen Alpha Language,5
-Vocal,Mentions Previous Survivor,4
-Vocal,Mentions Episode Title,15
-Vocal,Mentions Music to my Ears,15
-Vocal,Mentions Rival or Annoyance with Rival,3
-Vocal,Mentions Line in the Sand,4
-Vocal,Mentions Target on my back,4
-Game Event,Gets a Special Edit,15
-Game Event,Gets Sob Story,10
-Game Event,Goes on Journey,5
-Game Event,Quits the Game,-10
-Game Event,Removed for Medical,10
-Game Event,Treated for Medical,10
-Game Event,Voted Out,15
-Game Event,Applause while Voted Out,5
-Advantages,Advantage Play Successful,10
-Advantages,Finds Advantage Clue,5
-Advantages,Finds Beware Advantage,2
-Advantages,Accepts Beware Advantage,3
-Advantages,Obtains Hidden Immunity Idol,10
-Advantages,Helps to Obtain Idol,5
-Advantages,Obtains Extra Vote,10
-Advantages,Obtains Steal a Vote,10
-Advantages,Obtains Block a Vote,10
-Advantages,Obtains Idol Nullifier,10
-Advantages,Obtains Knowledge is Power,10
-Advantages,Plays their Extra Vote,10
-Advantages,Plays their Steal a Vote,10
-Advantages,Plays their Block a Vote,10
-Advantages,Plays their Idol Nullifier,10
-Advantages,Plays their Knowledge is Power,10
-Advantages,Uses Shot in the Dark,10
-Advantages,Creates Fake Advantage,15
-Advantages,Gives/Uses for Someone Else,15
-Advantages,Shares Knowledge,1
-Challenges,Chosen for Reward,5
-Challenges,Hero(es) of the Challenge,5
-Challenges,Wins Team Challenge,5
-Challenges,Wins Firemaking,15
-Challenges,Wins Individual Challenge,15
-Game Event,Makes Final 3,15
-Game Event,Wins the Game,20
-Game Event,Gives Away Immunity Necklace,20
-Game Event,Loses their vote,3
+category,name,point_value,trigger,action
+Advantages,Advantage Given to/Used for Someone Else,15,Yes,"after event is logged, a prompt will pop up asking what the advantage was (remove this advantage from the survivor advantages). It will then ask if the advantage was given or used. If it was given, a survivor needs to be chosen and that advantage added to their advantages)."
+Advantages,Beware Advantage - Accepts,3,Yes,"add beware advantage to survivor advantages, change vote status to no vote"
+Advantages,Beware Advantage - Completes,1,Yes,change vote status to has vote
+Advantages,Block a Vote - Obtains,10,Yes,add the advantage to survivor advantages
+Advantages,Block a Vote - Uses,10,Yes,remove the advantage to survivor advantages
+Advantages,Extra Vote - Obtains,10,Yes,add the advantage to survivor advantages
+Advantages,Extra Vote - Uses,10,Yes,remove the advantage to survivor advantages
+Advantages,Finds Advantage Clue,5,Yes,add the advantage to survivor advantages
+Advantages,Hidden Immunity Idol - Obtains,10,Yes,add the advantage to survivor advantages
+Advantages,Hidden Immunity Idol - Uses,10,Yes,remove the advantage to survivor advantages
+Advantages,Idol Nullifier - Obtains,10,Yes,add the advantage to survivor advantages
+Advantages,Idol Nullifier - Uses,10,Yes,remove the advantage to survivor advantages
+Advantages,Knowledge is Power - Obtains,10,Yes,add the advantage to survivor advantages
+Advantages,Knowledge is Power - Uses,10,Yes,remove the advantage to survivor advantages
+Advantages,Shot in the Dark - Uses,10,Yes,remove the advantage to survivor advantages
+Advantages,Steal a Vote - Obtains,10,Yes,add the advantage to survivor advantages
+Advantages,Steal a Vote - Uses,10,Yes,remove the advantage to survivor advantages
+Game Event,Eliminated - Medical,10,Yes,change eliminated to true
+Game Event,Eliminated - Quits the Game,-10,Yes,change eliminated to true
+Game Event,Eliminated - Voted Out,15,Yes,change eliminated to true
+Game Event,Loses their vote,3,Yes,change vote status to no vote
+Advantages,Advantage Play Successful,10,,
+Advantages,Beware Advantage - Finds,2,,
+Advantages,Creates Fake Advantage,15,,
+Advantages,Helps to Obtain Advantage,5,,
+Advantages,Shares Knowledge,1,,
+Challenges,Chosen for Reward,5,,
+Challenges,Firemaking Challenge - Win,15,,
+Challenges,Individual Challenge - Win,15,,
+Challenges,Team Challenge - Hero(es),5,,
+Challenges,Team Challenge - Win,5,,
+Game Event,Applause while Voted Out,5,,
+Game Event,Edit - Sob Story,10,,
+Game Event,Edit - Special Editing,15,,
+Game Event,Finale - Makes Final 3,15,,
+Game Event,Finale - Wins the Game,20,,
+Game Event,Gives Away Immunity Necklace,20,,
+Game Event,Journey,5,,
+Game Event,Treated for Medical,10,,
+Jeff,Heckles or Berates Them,5,,
+Jeff,Hugs Them,10,,
+Jeff,Is Impressed,5,,
+Jeff,Touches their Shoulders,5,,
+Physical Action,Catches Animal or Sea Life,12,,
+Physical Action,Climbs Tree,10,,
+Physical Action,Cries,4,,
+Physical Action,Gets Drunk or Tipsy,10,,
+Physical Action,Makes Fire,10,,
+Physical Action,Perfect Dive,5,,
+Physical Action,Rolls Eyes,3,,
+Physical Action,Sing or Dance,3,,
+Physical Action,Trips or Falls,5,,
+Physical Action,Wardrobe Malfunction,10,,
+Vocal,!!Swears!!,2,,
+Vocal,Has a (Liz style) Meltdown,15,,
+Vocal,Mentions Alliance Name,5,,
+Vocal,Mentions Anxiety,4,,
+Vocal,Mentions Astrology,5,,
+Vocal,Mentions Episode Title,15,,
+Vocal,Mentions Family or Partner,4,,
+Vocal,Mentions Line in the Sand,4,,
+Vocal,Mentions Music to my Ears,15,,
+Vocal,Mentions Occupation,3,,
+Vocal,Mentions Previous Survivor,4,,
+Vocal,Mentions Religion & Survivor gods,3,,
+Vocal,Mentions Resume or My Game,3,,
+Vocal,Mentions Rival or Annoyance with Rival,3,,
+Vocal,Mentions Target on my back,4,,
+Vocal,Reads Tree Mail,5,,
+Vocal,Uses Gen Z or Gen Alpha Language,5,,
