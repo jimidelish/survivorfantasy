@@ -84,11 +84,12 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   Assign Tribes, since tribes don't exist yet at CSV-upload time.
 - **Season Control**: add episodes, set the active one, lock/unlock, view
   picks by user per episode.
-- **Event Type Setup**: upload `event_types_s{N}.csv`. Event types are
-  global, not season-scoped — the filename's season number is just for the
-  uploader's own record-keeping. "Full replace" is implemented as
-  deactivate-all-then-upsert (matched on `category`+`name`), never a hard
-  delete, so it can't break events that already reference an old row.
+- **Event Type Setup no longer exists as a tab** — sunset in favor of the
+  public `/scoring` (Scoring Table) page, which does everything it did
+  (same `event_types_s{N}.csv` upload, same `POST /api/admin/event-types-csv`
+  endpoint and full-replace/21-trigger-validation behavior) plus inline
+  per-row point-value editing (`PATCH /api/admin/event-types/[id]`) for
+  admins, visible to everyone else as a read-only reference.
 - **Update Survivors**: per-survivor eliminated / current tribe (dropdown,
   populated from Assign Tribes) / advantages (including granting/using Shot
   in the Dark, just like any other advantage type), all saved immediately

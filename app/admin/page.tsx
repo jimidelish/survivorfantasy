@@ -12,7 +12,7 @@ import {
 } from "@/lib/types";
 import CsvUpload from "@/components/CsvUpload";
 
-type Tab = "setup" | "control" | "eventTypes" | "updateSurvivors" | "assignTribes";
+type Tab = "setup" | "control" | "updateSurvivors" | "assignTribes";
 
 interface UserPicksGroup {
   user_id: string;
@@ -55,7 +55,6 @@ export default function AdminPage() {
         {[
           { id: "setup", label: "Season Setup" },
           { id: "control", label: "Season Control" },
-          { id: "eventTypes", label: "Event Type Setup" },
           { id: "updateSurvivors", label: "Update Survivors" },
           { id: "assignTribes", label: "Assign Tribes" },
         ].map((t) => (
@@ -76,7 +75,6 @@ export default function AdminPage() {
       <div className="mt-8">
         {tab === "setup" && <SeasonSetupTab />}
         {tab === "control" && <SeasonControlTab />}
-        {tab === "eventTypes" && <EventTypeSetupTab />}
         {tab === "updateSurvivors" && <UpdateSurvivorsTab />}
         {tab === "assignTribes" && <AssignTribesTab />}
       </div>
@@ -111,42 +109,6 @@ function SeasonSetupTab() {
             return {
               ok: true,
               message: `Loaded ${data.survivorsInserted} survivor(s) into Season ${data.season.number}.`,
-            };
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-function EventTypeSetupTab() {
-  return (
-    <div>
-      <p className="text-sm text-muted">
-        Upload a scoring CSV named <code className="text-gold">event_types_s&#123;season&#125;.csv</code>{" "}
-        (e.g. <code className="text-gold">event_types_s51.csv</code>). Event types are global, not
-        tied to a season — the season number in the filename is just for your own record-keeping.
-        Every currently active event type is deactivated, then every row in this file is added or
-        updated (matched by category + name) as the new active set. Already-logged events keep
-        their original point value regardless.
-      </p>
-      <div className="mt-6">
-        <CsvUpload
-          title="Event types"
-          description="Headers: category, name, point_value"
-          expectedPattern="event_types_s{season}.csv — e.g. event_types_s51.csv"
-          confirmLabel="I understand this deactivates the current scoring table and replaces it with this file's rows."
-          onUpload={async (filename, csv, confirm) => {
-            const res = await fetch("/api/admin/event-types-csv", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ filename, csv, confirm }),
-            });
-            const data = await res.json();
-            if (!res.ok) return { ok: false, message: data.error || "Upload failed." };
-            return {
-              ok: true,
-              message: `${data.eventTypesActive} event type(s) are now active (labeled for Season ${data.seasonLabel}).`,
             };
           }}
         />

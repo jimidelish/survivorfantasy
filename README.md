@@ -47,15 +47,16 @@ to create your first account.
 
 ## 2. Admin page
 
-Season, episode, survivor, and event-type management now has a UI at `/admin`,
-gated to accounts with `is_admin = true`. Make yourself an admin once via the
-Supabase SQL Editor:
+Season, episode, survivor, and tribe management has a UI at `/admin`, gated
+to accounts with `is_admin = true`. (Event-type/scoring management moved to
+the public `/scoring` page — see section 4.) Make yourself an admin once via
+the Supabase SQL Editor:
 
 ```sql
 update users set is_admin = true where name = 'Your Name';
 ```
 
-The Admin page has five tabs:
+The Admin page has four tabs:
 
 ### Season Setup — survivor roster via CSV
 
@@ -86,32 +87,6 @@ them afterward in Assign Tribes.
   Enter Events page, alongside the other episode-level controls.
 - View every user's submitted picks for any episode (survivor + multiplier),
   read-only.
-
-### Event Type Setup — scoring table via CSV
-
-Upload a CSV named **`event_types_s{season}.csv`** (e.g. `event_types_s51.csv`).
-Headers:
-
-```
-category,name,point_value
-```
-
-Event types are **global**, not scoped to a season — the season number in
-the filename is only for your own record-keeping, not stored anywhere.
-Uploading is a "full replace" of what's *active*, implemented safely: every
-currently active event type is deactivated, then every row in the CSV is
-upserted (matched on `category` + `name`) as active. Rows already referenced
-by logged events are never deleted, only deactivated, so past scores can
-never be broken by a balance-change upload.
-
-**The first 21 rows are required and order-sensitive.** These are the
-"trigger" events — ones that also automatically update the survivor's row
-(grant/use an advantage, mark eliminated, change vote status) when logged,
-not just add points. The upload is rejected unless the first 21 rows'
-`category` and `name` exactly match the standard trigger list, in that
-exact order — only their `point_value` is free to change per season.
-Anything after row 21 is completely free-form, as before. See
-`lib/eventTriggers.ts` for the full list and what each one does.
 
 ### Update Survivors — eliminate, tribe, advantages
 
@@ -191,6 +166,21 @@ materialized/stored points table to keep in sync.
   needs more input than a checkbox can give (which advantage, given away or
   used, and to whom), so it opens a small follow-up prompt right after
   logging.
+- **Scoring Table (`/scoring`)** — open to everyone, not just signed-in
+  users: a read-only reference of every active event type, grouped by
+  category, showing what it's worth (positive in gold, negative in rust).
+  For admins, each point value becomes an inline-editable field (a Save
+  button appears once changed) via `PATCH /api/admin/event-types/[id]`, and
+  a CSV upload section appears below the table for bulk balance changes —
+  this replaced the Admin page's old "Event Type Setup" tab entirely,
+  including its full-replace behavior and the same
+  `event_types_s{season}.csv` filename convention. **The first 21 rows of
+  that CSV are required and order-sensitive** — these are the "trigger"
+  events (see Enter Events above), and the upload is rejected unless their
+  `category` and `name` exactly match the standard trigger list, in that
+  exact order (only `point_value` is free to change per season). Everything
+  after row 21 is completely free-form. See `lib/eventTriggers.ts` for the
+  full list and what each one does.
 
 ---
 
@@ -198,8 +188,11 @@ materialized/stored points table to keep in sync.
 
 - **Event entry stays open to everyone**, not gated by `is_admin` — logging
   events and undoing them can be done by any signed-in user. Episode-level
-  controls (locking, setting the active episode, season/event-type setup)
-  are admin-only, at `/admin`.
+  controls (locking, setting the active episode, season setup) are
+  admin-only, at `/admin`. Scoring Table (`/scoring`) is readable by anyone,
+  including signed-out visitors — only the inline point-value edits and the
+  CSV upload are admin-only, shown/hidden on that same page rather than
+  gated to a separate admin-only route.
 - **"Active episode" is separate from "locked."** Active determines what My
   Picks and Enter Events default to; locked determines whether picks can
   still be submitted/changed. You'll usually flip both together (make an
@@ -225,7 +218,8 @@ app/
   picks/page.tsx           My Picks (draft + survivor reference)
   scores/page.tsx           Scores (stacked bar charts, by player/survivor)
   events/page.tsx            Enter Events (open to all signed-in users)
-  admin/page.tsx              Admin: Season Setup / Control / Event Types / Update Survivors / Assign Tribes
+  scoring/page.tsx             Scoring Table (public; inline edit + CSV upload for admins)
+  admin/page.tsx              Admin: Season Setup / Control / Update Survivors / Assign Tribes
   login/page.tsx                Simple name-based sign-in
   api/
     seasons/current/           Current season (highest season number)
@@ -244,11 +238,12 @@ app/
     standings/                            Season-to-date leaderboard
     users/                                  Name-based login
     admin/survivors-csv/                     Season Setup CSV upload
-    admin/event-types-csv/                     Event Type Setup CSV upload
-    admin/picks/                                 View picks by user (admin)
-    admin/survivors/[id]/                         Update eliminated status/tribe
-    admin/advantages/, admin/advantages/[id]/       Grant/mark-used/remove advantages
-    admin/tribes/, admin/tribes/[id]/                 Add/rename/recolor/delete tribes
+    admin/event-types-csv/                     Scoring Table's bulk CSV upload (full replace)
+    admin/event-types/[id]/                      Scoring Table's inline point-value edit
+    admin/picks/                                   View picks by user (admin)
+    admin/survivors/[id]/                           Update eliminated status/tribe
+    admin/advantages/, admin/advantages/[id]/         Grant/mark-used/remove advantages
+    admin/tribes/, admin/tribes/[id]/                   Add/rename/recolor/delete tribes
 lib/
   supabaseAdmin.ts        Server-only Supabase client (service role key)
   currentSeason.ts          Resolves "current" = highest season number
@@ -260,7 +255,7 @@ lib/
 components/
   NavBar.tsx               Season-aware header, admin link for admins
   StackedPointsChart.tsx      Recharts stacked bar chart (Scores page)
-  CsvUpload.tsx                  Drag-and-drop CSV upload widget (Admin page)
+  CsvUpload.tsx                  Drag-and-drop CSV upload widget (Season Setup, Scoring Table)
   SurvivorAvatar.tsx               Photo w/ broken-image fallback (My Picks, Enter Events)
 templates/
   survivors_s51.csv        Example roster CSV

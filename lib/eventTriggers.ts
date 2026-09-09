@@ -31,8 +31,8 @@ interface TriggerDefinition {
   action: TriggerAction;
 }
 
-// The 21 standard trigger event types. Season Setup's Event Type Setup CSV
-// upload requires these exact (category, name) pairs as its first 21 rows,
+// The 21 standard trigger event types. The Scoring Table page's CSV upload
+// requires these exact (category, name) pairs as its first 21 rows,
 // in this exact order — point_value is free to differ per season, but the
 // category/name/order must match, or the upload is rejected. See
 // app/api/admin/event-types-csv/route.ts for the check.
