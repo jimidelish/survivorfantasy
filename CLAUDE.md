@@ -46,6 +46,10 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
 - **Advantages** are their own table (`survivor_advantages`), not a field on
   `survivors`, so a survivor can hold several at once (e.g. an Idol AND an
   Extra Vote). Rows get `status = 'used'` rather than being deleted.
+  **Shot in the Dark is one of these advantage types**, not a boolean field
+  on `survivors` (it used to be `survivors.shot_in_the_dark`, since removed)
+  — Season Setup CSV import auto-grants every survivor an active "Shot in
+  the Dark" row, same as the old "everyone starts eligible" default.
 - **Tribes** are a season-scoped table (`tribes`: name + color), not free
   text. `survivors.current_tribe_id` references it (`on delete set null`,
   so deleting a tribe just unassigns its members rather than blocking or
@@ -67,9 +71,10 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   uploader's own record-keeping. "Full replace" is implemented as
   deactivate-all-then-upsert (matched on `category`+`name`), never a hard
   delete, so it can't break events that already reference an old row.
-- **Update Survivors**: per-survivor eliminated / Shot in the Dark / current
-  tribe (dropdown, populated from Assign Tribes) / advantages, all saved
-  immediately (no separate save step).
+- **Update Survivors**: per-survivor eliminated / current tribe (dropdown,
+  populated from Assign Tribes) / advantages (including granting/using Shot
+  in the Dark, just like any other advantage type), all saved immediately
+  (no separate save step).
 - **Assign Tribes**: add/rename/recolor/delete this season's tribes, and
   drag survivors between tribe columns (native HTML5 drag-and-drop, no
   added dependency) to set `current_tribe_id`. Used for starting tribes,

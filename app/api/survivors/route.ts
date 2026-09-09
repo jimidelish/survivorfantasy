@@ -13,7 +13,7 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("survivors")
     .select(
-      "id, season_id, name, photo_url, original_tribe, current_tribe_id, current_tribe:tribes(id, season_id, name, color), eliminated, shot_in_the_dark, has_vote, survivor_advantages(id, survivor_id, type, status)"
+      "id, season_id, name, photo_url, original_tribe, current_tribe_id, current_tribe:tribes(id, season_id, name, color), eliminated, has_vote, survivor_advantages(id, survivor_id, type, status)"
     )
     .eq("season_id", season.id)
     .order("eliminated", { ascending: true })

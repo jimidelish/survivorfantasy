@@ -340,7 +340,7 @@ function UpdateSurvivorsTab() {
 
   async function updateSurvivor(
     id: string,
-    update: { eliminated?: boolean; shot_in_the_dark?: boolean; current_tribe_id?: string | null }
+    update: { eliminated?: boolean; current_tribe_id?: string | null }
   ) {
     await fetch(`/api/admin/survivors/${id}`, {
       method: "PATCH",
@@ -378,8 +378,9 @@ function UpdateSurvivorsTab() {
   return (
     <div>
       <p className="text-sm text-muted">
-        Update elimination status, Shot in the Dark availability, current tribe, and advantages
-        for this season&apos;s survivors. Changes apply immediately — no separate save step.
+        Update elimination status, current tribe, and advantages (including Shot in the Dark,
+        now granted/used like any other advantage) for this season&apos;s survivors. Changes
+        apply immediately — no separate save step.
       </p>
       <div className="mt-6 space-y-3">
         {survivors.map((s) => (
@@ -408,11 +409,7 @@ function SurvivorRow({
 }: {
   survivor: Survivor;
   tribes: Tribe[];
-  onUpdate: (update: {
-    eliminated?: boolean;
-    shot_in_the_dark?: boolean;
-    current_tribe_id?: string | null;
-  }) => void;
+  onUpdate: (update: { eliminated?: boolean; current_tribe_id?: string | null }) => void;
   onAddAdvantage: (type: string) => void;
   onSetAdvantageStatus: (advantageId: string, status: "active" | "used") => void;
   onRemoveAdvantage: (advantageId: string) => void;
@@ -438,14 +435,6 @@ function SurvivorRow({
               onChange={(e) => onUpdate({ eliminated: e.target.checked })}
             />
             Eliminated
-          </label>
-          <label className="flex items-center gap-1.5 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={survivor.shot_in_the_dark}
-              onChange={(e) => onUpdate({ shot_in_the_dark: e.target.checked })}
-            />
-            Shot in the Dark available
           </label>
         </div>
       </div>

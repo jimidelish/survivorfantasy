@@ -65,7 +65,6 @@ create table if not exists survivors (
   original_tribe text,
   current_tribe_id uuid references tribes(id) on delete set null,
   eliminated boolean not null default false,
-  shot_in_the_dark boolean not null default false,
   has_vote boolean not null default true, -- false = hit with a "no vote" twist/punishment
   created_at timestamptz not null default now(),
   unique (season_id, name)
@@ -80,7 +79,8 @@ create table if not exists survivor_advantages (
   survivor_id uuid not null references survivors(id) on delete cascade,
   type text not null check (type in (
     'Immunity Idol', 'Extra Vote', 'Beware Advantage', 'Advantage Clue',
-    'Steal a Vote', 'Block a Vote', 'Idol Nullifier', 'Knowledge is Power'
+    'Steal a Vote', 'Block a Vote', 'Idol Nullifier', 'Knowledge is Power',
+    'Shot in the Dark'
   )),
   status text not null default 'active' check (status in ('active', 'used')),
   acquired_at timestamptz not null default now(),

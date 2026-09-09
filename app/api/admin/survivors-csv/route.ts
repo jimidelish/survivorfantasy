@@ -98,7 +98,6 @@ export async function POST(req: NextRequest) {
     original_tribe: r.original_tribe,
     // current_tribe_id starts unset (null) — assign real tribes afterward
     // via Admin > Assign Tribes, once that season's tribes exist.
-    shot_in_the_dark: true, // everyone starts the season eligible
   }));
 
   const { data: inserted, error: insertError } = await supabaseAdmin
@@ -107,6 +106,20 @@ export async function POST(req: NextRequest) {
     .select("id, name");
 
   if (insertError) return NextResponse.json({ error: insertError.message }, { status: 500 });
+
+  // Everyone starts the season eligible for Shot in the Dark — granted as a
+  // real advantage row now, same as any other advantage, rather than a
+  // boolean field on survivors.
+  if (inserted && inserted.length > 0) {
+    const { error: sitdError } = await supabaseAdmin.from("survivor_advantages").insert(
+      inserted.map((s) => ({
+        survivor_id: s.id,
+        type: "Shot in the Dark",
+        status: "active",
+      }))
+    );
+    if (sitdError) return NextResponse.json({ error: sitdError.message }, { status: 500 });
+  }
 
   return NextResponse.json({
     season,

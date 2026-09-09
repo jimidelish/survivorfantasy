@@ -19,6 +19,7 @@ export const ADVANTAGE_TYPES = [
   "Block a Vote",
   "Idol Nullifier",
   "Knowledge is Power",
+  "Shot in the Dark",
 ] as const;
 export type AdvantageType = (typeof ADVANTAGE_TYPES)[number];
 
@@ -32,6 +33,7 @@ export const ADVANTAGE_COLORS: Record<AdvantageType, string> = {
   "Block a Vote": "#8E44AD", // purple
   "Idol Nullifier": "#D9822B", // orange/amber
   "Knowledge is Power": "#D9D9D9", // whitish grey
+  "Shot in the Dark": "#3FA6A0", // teal
 };
 
 export interface SurvivorAdvantage {
@@ -57,7 +59,6 @@ export interface Survivor {
   current_tribe_id: string | null;
   current_tribe: Tribe | null;
   eliminated: boolean;
-  shot_in_the_dark: boolean;
   has_vote: boolean;
   advantages?: SurvivorAdvantage[];
 }

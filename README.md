@@ -104,13 +104,15 @@ upserted (matched on `category` + `name`) as active. Rows already referenced
 by logged events are never deleted, only deactivated, so past scores can
 never be broken by a balance-change upload.
 
-### Update Survivors — eliminate, Shot in the Dark, tribe, advantages
+### Update Survivors — eliminate, tribe, advantages
 
 Per-survivor controls, all saved immediately (no separate save step):
-eliminated status, Shot in the Dark availability, current tribe (a dropdown
-populated from Assign Tribes), and advantages — grant a new one, mark an
-active one used, or remove one entirely (for correcting a mistaken add;
-distinct from marking it used, which keeps the row for history).
+eliminated status, current tribe (a dropdown populated from Assign Tribes),
+and advantages — grant a new one, mark an active one used, or remove one
+entirely (for correcting a mistaken add; distinct from marking it used,
+which keeps the row for history). Shot in the Dark is one of the advantage
+types here, not a separate field — Season Setup CSV import grants every
+survivor an active one automatically.
 
 ### Assign Tribes — manage tribes and drag survivors onto them
 
@@ -160,8 +162,9 @@ materialized/stored points table to keep in sync.
 - **My Picks (`/picks`)** — pick an episode, see your multiplier budget (with
   an explanation if you're getting a trailing-leader bonus), and assign
   multipliers to survivors. Each survivor card doubles as the "who's still
-  in" reference: current tribe, season points, per-episode average, Shot in
-  the Dark status, and any active advantages, right next to the stepper.
+  in" reference: current tribe, season points, per-episode average, and any
+  active advantages (Shot in the Dark included) as colored tags, right next
+  to the stepper.
 - **Scores (`/scores`)** — one page, toggle between a stacked bar chart of
   points **by player** or **by survivor**, each bar segmented by episode, plus
   a sorted totals list below.
@@ -226,7 +229,7 @@ app/
     admin/survivors-csv/                     Season Setup CSV upload
     admin/event-types-csv/                     Event Type Setup CSV upload
     admin/picks/                                 View picks by user (admin)
-    admin/survivors/[id]/                         Update eliminated/Shot in the Dark/tribe
+    admin/survivors/[id]/                         Update eliminated status/tribe
     admin/advantages/, admin/advantages/[id]/       Grant/mark-used/remove advantages
     admin/tribes/, admin/tribes/[id]/                 Add/rename/recolor/delete tribes
 lib/
