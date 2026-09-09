@@ -85,7 +85,7 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
 - **Season Control**: add episodes, set the active one, lock/unlock, view
   picks by user per episode.
 - **Event Type Setup no longer exists as a tab** — sunset in favor of the
-  public `/scoring` (Scoring Table) page, which does everything it did
+  public `/scoring` (Scoring Guide) page, which does everything it did
   (same `event_types_s{N}.csv` upload, same `POST /api/admin/event-types-csv`
   endpoint and full-replace/21-trigger-validation behavior) plus inline
   per-row point-value editing (`PATCH /api/admin/event-types/[id]`) for

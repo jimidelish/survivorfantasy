@@ -166,7 +166,7 @@ materialized/stored points table to keep in sync.
   needs more input than a checkbox can give (which advantage, given away or
   used, and to whom), so it opens a small follow-up prompt right after
   logging.
-- **Scoring Table (`/scoring`)** — open to everyone, not just signed-in
+- **Scoring Guide (`/scoring`)** — open to everyone, not just signed-in
   users: a read-only reference of every active event type, grouped by
   category, showing what it's worth (positive in gold, negative in rust).
   For admins, each point value becomes an inline-editable field (a Save
@@ -189,7 +189,7 @@ materialized/stored points table to keep in sync.
 - **Event entry stays open to everyone**, not gated by `is_admin` — logging
   events and undoing them can be done by any signed-in user. Episode-level
   controls (locking, setting the active episode, season setup) are
-  admin-only, at `/admin`. Scoring Table (`/scoring`) is readable by anyone,
+  admin-only, at `/admin`. Scoring Guide (`/scoring`) is readable by anyone,
   including signed-out visitors — only the inline point-value edits and the
   CSV upload are admin-only, shown/hidden on that same page rather than
   gated to a separate admin-only route.
@@ -218,7 +218,7 @@ app/
   picks/page.tsx           My Picks (draft + survivor reference)
   scores/page.tsx           Scores (stacked bar charts, by player/survivor)
   events/page.tsx            Enter Events (open to all signed-in users)
-  scoring/page.tsx             Scoring Table (public; inline edit + CSV upload for admins)
+  scoring/page.tsx             Scoring Guide (public; inline edit + CSV upload for admins)
   admin/page.tsx              Admin: Season Setup / Control / Update Survivors / Assign Tribes
   login/page.tsx                Simple name-based sign-in
   api/
@@ -238,8 +238,8 @@ app/
     standings/                            Season-to-date leaderboard
     users/                                  Name-based login
     admin/survivors-csv/                     Season Setup CSV upload
-    admin/event-types-csv/                     Scoring Table's bulk CSV upload (full replace)
-    admin/event-types/[id]/                      Scoring Table's inline point-value edit
+    admin/event-types-csv/                     Scoring Guide's bulk CSV upload (full replace)
+    admin/event-types/[id]/                      Scoring Guide's inline point-value edit
     admin/picks/                                   View picks by user (admin)
     admin/survivors/[id]/                           Update eliminated status/tribe
     admin/advantages/, admin/advantages/[id]/         Grant/mark-used/remove advantages
@@ -255,7 +255,7 @@ lib/
 components/
   NavBar.tsx               Season-aware header, admin link for admins
   StackedPointsChart.tsx      Recharts stacked bar chart (Scores page)
-  CsvUpload.tsx                  Drag-and-drop CSV upload widget (Season Setup, Scoring Table)
+  CsvUpload.tsx                  Drag-and-drop CSV upload widget (Season Setup, Scoring Guide)
   SurvivorAvatar.tsx               Photo w/ broken-image fallback (My Picks, Enter Events)
 templates/
   survivors_s51.csv        Example roster CSV

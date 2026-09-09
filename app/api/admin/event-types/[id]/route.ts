@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import supabaseAdmin from "@/lib/supabaseAdmin";
 
-// Inline point-value edit from the Scoring Table page — a quick single-row
+// Inline point-value edit from the Scoring Guide page — a quick single-row
 // balance change. category/name/active stay CSV-managed via
 // admin/event-types-csv (adding/removing/retiring event types).
 export const dynamic = "force-dynamic";

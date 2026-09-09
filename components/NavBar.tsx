@@ -49,7 +49,7 @@ export default function NavBar() {
           <NavLink href="/" label="Home" />
           <NavLink href="/picks" label="My Picks" />
           <NavLink href="/scores" label="Scores" />
-          <NavLink href="/scoring" label="Scoring Table" />
+          <NavLink href="/scoring" label="Scoring Guide" />
           {user && <NavLink href="/events" label="Enter Events" />}
           {user?.is_admin && <NavLink href="/admin" label="Admin" />}
           <Link
