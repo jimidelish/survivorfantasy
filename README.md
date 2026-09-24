@@ -56,12 +56,34 @@ the Supabase SQL Editor:
 update users set is_admin = true where name = 'Your Name';
 ```
 
-The Admin page has four tabs:
+The Admin page has three tabs:
 
-### Season Setup — survivor roster via CSV
+### Season Control — a season picker, episodes, picks, and roster setup
 
-Upload a CSV named **`survivors_s{season}.csv`** (e.g. `survivors_s51.csv`).
-Templates are in [`templates/`](./templates). Headers:
+A **Season** dropdown at the top picks which season the rest of this tab
+operates on — every season, not just the current one (useful for setting
+up next season's episodes ahead of time, or reviewing a past one). It's
+labeled "(current)" next to whichever season is actually current (highest
+number) — that's the only one **My Picks** and **Enter Events** ever use,
+regardless of what's selected here.
+
+- Add episodes (number + optional title) for the selected season.
+- Mark one episode **active** — separate from locking. The active episode
+  is what My Picks and Enter Events default to, but only for the season
+  that's actually current. Only one episode per season can be active at a
+  time (enforced at the database level).
+- **Lock/unlock** picks per episode.
+- **Delete** an episode entirely (behind a confirmation) — permanently
+  removes its picks and events, reversing anything those events
+  automatically changed (eliminated status, advantages, vote status) first.
+- View every user's submitted picks for any episode (survivor + multiplier),
+  read-only.
+
+At the bottom, **Season Setup** uploads a survivor roster CSV named
+**`survivors_s{season}.csv`** (e.g. `survivors_s51.csv`) — independent of
+whichever season is selected in the picker above, since the season it
+targets comes from the filename, not the dropdown. Templates are in
+[`templates/`](./templates). Headers:
 
 ```
 name,photo_url,original_tribe
@@ -82,18 +104,6 @@ Probst) — creating one automatically if it's missing, never touching it if
 already there. He's not part of the CSV; he's pickable and scored per
 season like any other survivor, but with no tribe, elimination, or vote
 status.
-
-### Season Control — episodes and picks
-
-- Add episodes (number + optional title) for the current season.
-- Mark one episode **active** — this is a new concept, separate from
-  locking. The active episode is what **My Picks** and **Enter Events**
-  default to when a user opens those pages. Only one episode per season can
-  be active at a time (enforced at the database level).
-- **Lock/unlock** picks per episode — this now lives here instead of on the
-  Enter Events page, alongside the other episode-level controls.
-- View every user's submitted picks for any episode (survivor + multiplier),
-  read-only.
 
 ### Update Survivors — eliminate, tribe, advantages
 
@@ -235,12 +245,13 @@ app/
   scores/page.tsx           Scores (stacked bar charts, by player/survivor)
   events/page.tsx            Enter Events (open to all signed-in users)
   scoring/page.tsx             Scoring Guide (public; inline edit + CSV upload for admins)
-  admin/page.tsx              Admin: Season Setup / Control / Update Survivors / Assign Tribes
+  admin/page.tsx              Admin: Season Control (+ Season Setup) / Update Survivors / Assign Tribes
   login/page.tsx                Simple name-based sign-in
   api/
-    seasons/current/           Current season (highest season number)
-    episodes/                   List/create episodes (current season)
-    episodes/[id]/                Lock/unlock, set active episode
+    seasons/                    Every season, newest first (Season Control's picker)
+    seasons/current/              Current season (highest season number)
+    episodes/                       List/create episodes (?season_id=, else current season)
+    episodes/[id]/                    Lock/unlock, set active episode, delete (reverses triggers)
     survivors/                   List survivors + tribe + advantages (current season)
     tribes/                       List tribes (current season)
     event-types/                   Dynamic scoring reference table

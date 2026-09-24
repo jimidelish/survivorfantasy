@@ -12,7 +12,7 @@ import {
 } from "@/lib/types";
 import CsvUpload from "@/components/CsvUpload";
 
-type Tab = "setup" | "control" | "updateSurvivors" | "assignTribes";
+type Tab = "control" | "updateSurvivors" | "assignTribes";
 
 interface UserPicksGroup {
   user_id: string;
@@ -23,7 +23,7 @@ interface UserPicksGroup {
 export default function AdminPage() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [checked, setChecked] = useState(false);
-  const [tab, setTab] = useState<Tab>("setup");
+  const [tab, setTab] = useState<Tab>("control");
 
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -53,7 +53,6 @@ export default function AdminPage() {
 
       <div className="mt-6 flex gap-2">
         {[
-          { id: "setup", label: "Season Setup" },
           { id: "control", label: "Season Control" },
           { id: "updateSurvivors", label: "Update Survivors" },
           { id: "assignTribes", label: "Assign Tribes" },
@@ -73,7 +72,6 @@ export default function AdminPage() {
       </div>
 
       <div className="mt-8">
-        {tab === "setup" && <SeasonSetupTab />}
         {tab === "control" && <SeasonControlTab />}
         {tab === "updateSurvivors" && <UpdateSurvivorsTab />}
         {tab === "assignTribes" && <AssignTribesTab />}
@@ -118,7 +116,8 @@ function SeasonSetupTab() {
 }
 
 function SeasonControlTab() {
-  const [season, setSeason] = useState<Season | null>(null);
+  const [seasons, setSeasons] = useState<Season[]>([]);
+  const [selectedSeasonId, setSelectedSeasonId] = useState("");
   const [episodes, setEpisodes] = useState<Episode[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -129,19 +128,29 @@ function SeasonControlTab() {
   const [picksGroups, setPicksGroups] = useState<UserPicksGroup[]>([]);
   const [picksLoading, setPicksLoading] = useState(false);
 
-  function refresh() {
-    Promise.all([
-      fetch("/api/seasons/current").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/episodes").then((r) => r.json()),
-    ]).then(([s, eps]) => {
-      setSeason(s);
-      setEpisodes(eps);
-      if (!picksEpisodeId && eps[0]) setPicksEpisodeId(eps[0].id);
-      setLoading(false);
-    });
+  useEffect(() => {
+    fetch("/api/seasons")
+      .then((r) => r.json())
+      .then((list: Season[]) => {
+        setSeasons(list);
+        if (list[0]) setSelectedSeasonId(list[0].id);
+        else setLoading(false);
+      });
+  }, []);
+
+  function refreshEpisodes() {
+    if (!selectedSeasonId) return;
+    setLoading(true);
+    fetch(`/api/episodes?season_id=${selectedSeasonId}`)
+      .then((r) => r.json())
+      .then((eps) => {
+        setEpisodes(eps);
+        setPicksEpisodeId(eps[0]?.id || "");
+      })
+      .finally(() => setLoading(false));
   }
 
-  useEffect(refresh, []);
+  useEffect(refreshEpisodes, [selectedSeasonId]);
 
   useEffect(() => {
     if (!picksEpisodeId) return;
@@ -154,15 +163,19 @@ function SeasonControlTab() {
 
   async function addEpisode(e: React.FormEvent) {
     e.preventDefault();
-    if (!newNumber) return;
+    if (!newNumber || !selectedSeasonId) return;
     await fetch("/api/episodes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ number: Number(newNumber), title: newTitle || null }),
+      body: JSON.stringify({
+        season_id: selectedSeasonId,
+        number: Number(newNumber),
+        title: newTitle || null,
+      }),
     });
     setNewNumber("");
     setNewTitle("");
-    refresh();
+    refreshEpisodes();
   }
 
   async function setActive(episodeId: string) {
@@ -171,7 +184,7 @@ function SeasonControlTab() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ is_current: true }),
     });
-    refresh();
+    refreshEpisodes();
   }
 
   async function toggleLock(episode: Episode) {
@@ -180,7 +193,7 @@ function SeasonControlTab() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locked: !episode.locked }),
     });
-    refresh();
+    refreshEpisodes();
   }
 
   async function deleteEpisode(episode: Episode) {
@@ -191,19 +204,37 @@ function SeasonControlTab() {
     );
     if (!confirmed) return;
     await fetch(`/api/episodes/${episode.id}`, { method: "DELETE" });
-    refresh();
+    refreshEpisodes();
   }
+
+  // The list is sorted newest-first by the API, so the first entry is
+  // always "current" (highest number) — same definition the rest of the
+  // app uses (see lib/currentSeason.ts), just computed client-side here to
+  // avoid a second fetch.
+  const currentSeasonNumber = seasons[0]?.number;
 
   if (loading) return <p className="text-sm text-muted">Loading…</p>;
 
   return (
     <div>
-      <p className="text-sm text-muted">
-        Managing episodes for{" "}
-        <span className="text-gold">
-          {season ? `Season ${season.number}${season.name ? ` — ${season.name}` : ""}` : "—"}
-        </span>
-        . The active episode is what My Picks and Enter Events default to.
+      <label className="text-sm text-muted">Season:</label>{" "}
+      <select
+        value={selectedSeasonId}
+        onChange={(e) => setSelectedSeasonId(e.target.value)}
+        className="rounded-md border border-surface2 bg-surface px-3 py-2 text-sm"
+      >
+        {seasons.map((s) => (
+          <option key={s.id} value={s.id}>
+            Season {s.number}
+            {s.name ? ` — ${s.name}` : ""}
+            {s.number === currentSeasonNumber ? " (current)" : ""}
+          </option>
+        ))}
+      </select>
+      <p className="mt-3 text-sm text-muted">
+        The active episode is what My Picks and Enter Events default to — only for whichever
+        season is actually current ({currentSeasonNumber ?? "—"}), regardless of which one you're
+        managing here.
       </p>
 
       <form onSubmit={addEpisode} className="mt-6 flex flex-wrap gap-2">
@@ -295,6 +326,15 @@ function SeasonControlTab() {
           ))}
         </ul>
       )}
+
+      <div className="mt-10 rope-divider" />
+
+      <h2 className="mt-8 font-display text-xl font-semibold">Season Setup</h2>
+      <p className="mt-2 text-xs text-muted">
+        Uploads to whichever season number is in the file name — not necessarily the one selected
+        above.
+      </p>
+      <SeasonSetupTab />
     </div>
   );
 }

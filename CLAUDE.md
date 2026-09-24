@@ -105,17 +105,22 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
 
 ## Admin page (`/admin`, gated by `users.is_admin`)
 
-- **Season Setup**: upload `survivors_s{N}.csv` (e.g. `survivors_s51.csv`).
-  Full replace, scoped to only that one season (creates the season if it
-  doesn't exist). Headers: `name,photo_url,original_tribe`. Survivors start
-  with `current_tribe_id = null` — assign real tribes afterward via
-  Assign Tribes, since tribes don't exist yet at CSV-upload time.
-- **Season Control**: add episodes, set the active one, lock/unlock, view
-  picks by user per episode, or delete one entirely (behind a
-  confirmation). Deleting cascade-deletes its picks/events at the DB level,
-  but first reverses any `trigger_effect` on those events — same as "Clear
-  all events" — so it can't silently leave a survivor eliminated/advantaged
-  with no event left to explain why.
+- **Season Control** has a season picker (`GET /api/seasons`, every season
+  newest-first — distinct from `GET /api/seasons/current`, which every
+  other page uses and which is always the highest number). Episode
+  list/add/lock/set-active/delete and "Picks by user" all operate on
+  whichever season is selected there, not necessarily the current one —
+  `GET/POST /api/episodes` take an optional `season_id` (falling back to
+  current-season when omitted, which is what My Picks/Enter Events do —
+  they're untouched by this). Delete cascade-deletes an episode's
+  picks/events at the DB level, but first reverses any `trigger_effect` on
+  those events — same as "Clear all events" — so it can't silently leave a
+  survivor eliminated/advantaged with no event left to explain why.
+  **Season Setup no longer exists as its own tab** — it's the CSV upload
+  section at the bottom of Season Control now (still creates the season
+  from the CSV filename if it doesn't exist, and still full-replaces that
+  season's cast — independent of whichever season is selected in the
+  picker above it, which only drives episodes/picks).
 - **Event Type Setup no longer exists as a tab** — sunset in favor of the
   public `/scoring` (Scoring Guide) page, which does everything it did
   (same `event_types_s{N}.csv` upload, same `POST /api/admin/event-types-csv`

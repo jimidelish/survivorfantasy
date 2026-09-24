@@ -2,11 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import supabaseAdmin from "@/lib/supabaseAdmin";
 import { getCurrentSeason } from "@/lib/currentSeason";
 
-// Always scoped to the current season (highest season number).
+// Scoped to the current season (highest season number) by default. Pass
+// ?season_id= to target a specific season instead — used by Admin >
+// Season Control's season picker; every other caller (My Picks, Enter
+// Events) omits it and always gets the current season, unchanged.
 export const dynamic = "force-dynamic";
 
-export async function GET() {
-  const season = await getCurrentSeason();
+export async function GET(req: NextRequest) {
+  const seasonId = req.nextUrl.searchParams.get("season_id");
+  const season = seasonId ? { id: seasonId } : await getCurrentSeason();
   if (!season) return NextResponse.json([]);
 
   const { data, error } = await supabaseAdmin
@@ -20,12 +24,12 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const season = await getCurrentSeason();
+  const body = await req.json();
+  const seasonId = body.season_id as string | undefined;
+  const season = seasonId ? { id: seasonId } : await getCurrentSeason();
   if (!season) {
     return NextResponse.json({ error: "No current season found." }, { status: 400 });
   }
-
-  const body = await req.json();
   const number = Number(body.number);
   const title = (body.title as string) || null;
   const air_date = (body.air_date as string) || null;
