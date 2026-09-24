@@ -183,6 +183,17 @@ function SeasonControlTab() {
     refresh();
   }
 
+  async function deleteEpisode(episode: Episode) {
+    const label = `Episode ${episode.number}${episode.title ? ` — ${episode.title}` : ""}`;
+    const confirmed = window.confirm(
+      `Delete ${label}? This permanently deletes every pick and logged event for this episode, and reverses ` +
+        `anything those events automatically changed (eliminated status, advantages, vote status). This cannot be undone.`
+    );
+    if (!confirmed) return;
+    await fetch(`/api/episodes/${episode.id}`, { method: "DELETE" });
+    refresh();
+  }
+
   if (loading) return <p className="text-sm text-muted">Loading…</p>;
 
   return (
@@ -240,6 +251,12 @@ function SeasonControlTab() {
                 className="rounded-full border border-surface2 px-3 py-1 text-xs text-muted hover:border-gold/50"
               >
                 {ep.locked ? "Unlock picks" : "Lock picks"}
+              </button>
+              <button
+                onClick={() => deleteEpisode(ep)}
+                className="rounded-full border border-rust/50 px-3 py-1 text-xs text-rust hover:bg-rust/10"
+              >
+                Delete
               </button>
             </div>
           </li>

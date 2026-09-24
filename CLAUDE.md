@@ -89,7 +89,11 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   with `current_tribe_id = null` — assign real tribes afterward via
   Assign Tribes, since tribes don't exist yet at CSV-upload time.
 - **Season Control**: add episodes, set the active one, lock/unlock, view
-  picks by user per episode.
+  picks by user per episode, or delete one entirely (behind a
+  confirmation). Deleting cascade-deletes its picks/events at the DB level,
+  but first reverses any `trigger_effect` on those events — same as "Clear
+  all events" — so it can't silently leave a survivor eliminated/advantaged
+  with no event left to explain why.
 - **Event Type Setup no longer exists as a tab** — sunset in favor of the
   public `/scoring` (Scoring Guide) page, which does everything it did
   (same `event_types_s{N}.csv` upload, same `POST /api/admin/event-types-csv`
