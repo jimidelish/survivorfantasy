@@ -25,18 +25,29 @@ export default function NavBar() {
   const [season, setSeason] = useState<Season | null>(null);
 
   useEffect(() => {
-    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (raw) {
+    function syncUser() {
+      const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!raw) {
+        setUser(null);
+        return;
+      }
       try {
         setUser(JSON.parse(raw));
       } catch {
         // ignore malformed storage
       }
     }
+
+    syncUser();
     fetch("/api/seasons/current")
       .then((r) => (r.ok ? r.json() : null))
       .then(setSeason)
       .catch(() => {});
+
+    // Picks up a same-tab user switch from the login page (see its
+    // selectUser) — localStorage's own "storage" event doesn't fire here.
+    window.addEventListener("survivor-fantasy-user-changed", syncUser);
+    return () => window.removeEventListener("survivor-fantasy-user-changed", syncUser);
   }, []);
 
   return (

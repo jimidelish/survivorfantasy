@@ -20,6 +20,10 @@ export default function LoginPage() {
 
   function selectUser(user: AppUser) {
     localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(user));
+    // localStorage's own "storage" event only fires in OTHER tabs, not this
+    // one, so components that already read it on mount (like NavBar) won't
+    // notice a same-tab change on their own — tell them explicitly.
+    window.dispatchEvent(new Event("survivor-fantasy-user-changed"));
     router.push("/");
     router.refresh();
   }
