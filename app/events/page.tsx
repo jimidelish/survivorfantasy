@@ -227,12 +227,19 @@ export default function EventsPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-semibold">Enter events</h1>
-      <p className="mt-2 text-sm text-muted">
-        Log what happened this episode. Points flow to whoever drafted each survivor,
-        multiplied by their assigned multiplier. Anyone signed in can log events.
-        Episode locking and the active episode are managed from Admin &gt; Season Control.
-      </p>
+      <h1 className="font-display text-3xl font-semibold">Episode Events</h1>
+      {user.is_admin ? (
+        <p className="mt-2 text-sm text-muted">
+          Log what happened this episode. Points flow to whoever drafted each survivor,
+          multiplied by their assigned multiplier. Episode locking and the active episode
+          are managed from Admin &gt; Season Control.
+        </p>
+      ) : (
+        <p className="mt-2 text-sm text-muted">
+          What's been logged for this episode so far. Points flow to whoever drafted each
+          survivor, multiplied by their assigned multiplier.
+        </p>
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <select
@@ -256,6 +263,7 @@ export default function EventsPage() {
 
       <div className="mt-8 rope-divider" />
 
+      {user.is_admin && (
       <form onSubmit={logEvents} className="mt-6">
         <p className="font-display text-lg">Who</p>
 
@@ -374,8 +382,9 @@ export default function EventsPage() {
           )}
         </div>
       </form>
-      {error && <p className="mt-3 text-sm text-rust">{error}</p>}
-      {warnings.length > 0 && (
+      )}
+      {user.is_admin && error && <p className="mt-3 text-sm text-rust">{error}</p>}
+      {user.is_admin && warnings.length > 0 && (
         <ul className="mt-3 space-y-1">
           {warnings.map((w, i) => (
             <li key={i} className="text-sm text-gold">
@@ -388,7 +397,7 @@ export default function EventsPage() {
       <div className="mt-10">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-xl font-semibold">Events this episode</h2>
-          {events.length > 0 && (
+          {user.is_admin && events.length > 0 && (
             <button onClick={clearAllEvents} className="text-xs text-rust hover:underline">
               Clear all events
             </button>
@@ -408,19 +417,21 @@ export default function EventsPage() {
                     {ev.point_value})
                   </span>
                 </span>
-                <button
-                  onClick={() => undoEvent(ev.id)}
-                  className="text-xs text-muted hover:text-rust"
-                >
-                  Undo
-                </button>
+                {user.is_admin && (
+                  <button
+                    onClick={() => undoEvent(ev.id)}
+                    className="text-xs text-muted hover:text-rust"
+                  >
+                    Undo
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         )}
       </div>
 
-      {pendingTransfers[0] && (
+      {user.is_admin && pendingTransfers[0] && (
         <AdvantageTransferModal
           key={pendingTransfers[0].event_id}
           transfer={pendingTransfers[0]}

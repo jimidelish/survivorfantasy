@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 }
 
 // Pass `id` to undo a single event, or `episode_id` to clear every event
-// logged for that episode at once (used by Enter Events' "Clear all events").
+// logged for that episode at once (used by Episode Events' "Clear all events").
 // Either way, any trigger_effect on the event(s) being removed is reversed
 // first, so undoing/clearing a trigger event fully rolls back what it
 // automatically changed (eliminated status, advantages, vote status).

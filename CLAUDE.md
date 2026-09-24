@@ -41,11 +41,16 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
 - **Events snapshot their point value** at the moment they're logged
   (`events.point_value` is a copy of `event_types.point_value` at insert
   time), so later balance changes to `event_types` never rewrite history.
-  Enter Events (`/events`) logs in bulk: checking N survivors and M event
+  Episode Events (`/events`) logs in bulk: checking N survivors and M event
   types and clicking "Log event(s)" creates N×M individual event rows in
   one call to `POST /api/events/bulk` (one scene, multiple people and/or
   multiple things at once) — there's no grouping concept above the
   individual `events` rows, so each one still undoes independently.
+  Episode Events is readable by every signed-in user, but logging/undo/
+  Clear all events are gated to `user.is_admin` client-side (same pattern
+  as Update Survivors, Assign Tribes, Scoring Guide's edit controls) — no
+  server-side check on the API routes themselves, consistent with the rest
+  of the app's admin gating.
 - **Trigger events** (`lib/eventTriggers.ts`) are a fixed set of 21
   (category, name) pairs that, beyond just logging, also automatically
   change the survivor's row (add/mark-used an advantage, set `eliminated`,
@@ -60,7 +65,7 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   that, not just guess at current state. One trigger — "Advantage Given
   to/Used for Someone Else" — can't apply automatically (needs to know
   which advantage, given-or-used, and who to) and instead logs normally,
-  then surfaces a modal on the Enter Events page
+  then surfaces a modal on the Episode Events page
   (`POST /api/events/[id]/advantage-transfer` completes it). Choosing
   "given to someone" also logs a normal event for the recipient (that
   type's "Obtains" trigger, via `lib/eventTriggers.ts`'s
@@ -71,7 +76,7 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   trigger fires with no matching active advantage to act on, the event
   still logs — a warning is shown instead of blocking.
 - **"Active episode" ≠ "locked."** `episodes.is_current` (one true per season,
-  enforced by a partial unique index) is what My Picks / Enter Events default
+  enforced by a partial unique index) is what My Picks / Episode Events default
   to. `episodes.locked` is a separate flag controlling whether picks can
   still be submitted. Both are set from Admin > Season Control.
 - **Advantages** are their own table (`survivor_advantages`), not a field on
@@ -111,7 +116,7 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   list/add/lock/set-active/delete and "Picks by user" all operate on
   whichever season is selected there, not necessarily the current one —
   `GET/POST /api/episodes` take an optional `season_id` (falling back to
-  current-season when omitted, which is what My Picks/Enter Events do —
+  current-season when omitted, which is what My Picks/Episode Events do —
   they're untouched by this). Delete cascade-deletes an episode's
   picks/events at the DB level, but first reverses any `trigger_effect` on
   those events — same as "Clear all events" — so it can't silently leave a
@@ -163,7 +168,7 @@ Deliberately not a generic SaaS look — a "tribal council at night" theme:
    `element.style.display = "none"` in an `onError` handler — the latter gets
    wiped out on the next unrelated re-render, causing the browser's default
    broken-image icon to reappear. See `components/SurvivorAvatar.tsx` (shared
-   by My Picks and Enter Events) for the correct pattern — also sets
+   by My Picks and Episode Events) for the correct pattern — also sets
    `referrerPolicy="no-referrer"`, since Fandom/Wikia's image CDN 404s
    requests that carry a cross-site `Referer` header (hotlink protection).
 5. **`force-dynamic` alone does not stop `fetch()` calls made *inside* a

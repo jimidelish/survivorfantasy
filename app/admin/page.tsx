@@ -232,7 +232,7 @@ function SeasonControlTab() {
         ))}
       </select>
       <p className="mt-3 text-sm text-muted">
-        The active episode is what My Picks and Enter Events default to — only for whichever
+        The active episode is what My Picks and Episode Events default to — only for whichever
         season is actually current ({currentSeasonNumber ?? "—"}), regardless of which one you're
         managing here.
       </p>

@@ -64,12 +64,12 @@ A **Season** dropdown at the top picks which season the rest of this tab
 operates on — every season, not just the current one (useful for setting
 up next season's episodes ahead of time, or reviewing a past one). It's
 labeled "(current)" next to whichever season is actually current (highest
-number) — that's the only one **My Picks** and **Enter Events** ever use,
+number) — that's the only one **My Picks** and **Episode Events** ever use,
 regardless of what's selected here.
 
 - Add episodes (number + optional title) for the selected season.
 - Mark one episode **active** — separate from locking. The active episode
-  is what My Picks and Enter Events default to, but only for the season
+  is what My Picks and Episode Events default to, but only for the season
   that's actually current. Only one episode per season can be active at a
   time (enforced at the database level).
 - **Lock/unlock** picks per episode.
@@ -141,7 +141,7 @@ never stored, so it can't drift out of sync with actual standings.
 ### Scoring
 
 1. An event type (e.g. "Won individual immunity", worth 5 points) is logged
-   against a survivor for a specific episode from the **Enter Events** page.
+   against a survivor for a specific episode from the **Episode Events** page.
 2. The event stores a **copy** of the point value at that moment (`events.point_value`),
    so later balance changes to `event_types` never rewrite history.
 3. A survivor's total points in an episode = sum of their logged events that
@@ -172,20 +172,22 @@ materialized/stored points table to keep in sync.
 - **Scores (`/scores`)** — one page, toggle between a stacked bar chart of
   points **by player** or **by survivor**, each bar segmented by episode, plus
   a sorted totals list below.
-- **Enter Events (`/events`)** — open to every signed-in user, not just
-  admins. Checkboxes for survivors (photo + name, eliminated ones shown
-  greyed out but still selectable) and for event types (grouped by
-  category) — logging creates one event per survivor × event type
-  combination in a single "Log event(s)" click, for scenes where several
-  people do the same thing or one person does several things at once. A
-  toggle button per tribe checks/unchecks all of that tribe's survivors at
-  once. Includes undo per logged event, and "Clear all events" for the
-  whole episode. Some event types are "triggers" — logging them also
-  automatically updates the survivor (advantages, eliminated, vote status);
-  Undo and Clear all events reverse that automatically too. One trigger
-  needs more input than a checkbox can give (which advantage, given away or
-  used, and to whom), so it opens a small follow-up prompt right after
-  logging.
+- **Episode Events (`/events`)** — open to every signed-in user, but
+  logging is admin-only. Non-admins pick an episode and see a read-only
+  "Events this episode" list; admins get that plus the full logging UI:
+  checkboxes for survivors (photo + name, eliminated ones shown greyed out
+  but still selectable) and for event types (grouped by category) —
+  logging creates one event per survivor × event type combination in a
+  single "Log event(s)" click, for scenes where several people do the same
+  thing or one person does several things at once. A toggle button per
+  tribe checks/unchecks all of that tribe's survivors at once. Includes
+  undo per logged event, and "Clear all events" for the whole episode
+  (admin-only, like all logging/undo controls). Some event types are
+  "triggers" — logging them also automatically updates the survivor
+  (advantages, eliminated, vote status); Undo and Clear all events reverse
+  that automatically too. One trigger needs more input than a checkbox can
+  give (which advantage, given away or used, and to whom), so it opens a
+  small follow-up prompt right after logging.
 - **Scoring Guide (`/scoring`)** — open to everyone, not just signed-in
   users: a read-only reference of every active event type, grouped by
   category, showing what it's worth (positive in gold, negative in rust).
@@ -196,7 +198,7 @@ materialized/stored points table to keep in sync.
   including its full-replace behavior and the same
   `event_types_s{season}.csv` filename convention. **The first 21 rows of
   that CSV are required and order-sensitive** — these are the "trigger"
-  events (see Enter Events above), and the upload is rejected unless their
+  events (see Episode Events above), and the upload is rejected unless their
   `category` and `name` exactly match the standard trigger list, in that
   exact order (only `point_value` is free to change per season). Everything
   after row 21 is completely free-form. See `lib/eventTriggers.ts` for the
@@ -206,15 +208,17 @@ materialized/stored points table to keep in sync.
 
 ## 5. Notes
 
-- **Event entry stays open to everyone**, not gated by `is_admin` — logging
-  events and undoing them can be done by any signed-in user. Episode-level
+- **Episode Events is readable by every signed-in user, but logging is
+  admin-only** — gated client-side the same way as Update Survivors,
+  Assign Tribes, and Scoring Guide's edit controls: the page itself is
+  open, and admin-only pieces are just shown/hidden based on
+  `user.is_admin` rather than living behind a separate route. Episode-level
   controls (locking, setting the active episode, season setup) are
   admin-only, at `/admin`. Scoring Guide (`/scoring`) is readable by anyone,
   including signed-out visitors — only the inline point-value edits and the
-  CSV upload are admin-only, shown/hidden on that same page rather than
-  gated to a separate admin-only route.
+  CSV upload are admin-only.
 - **"Active episode" is separate from "locked."** Active determines what My
-  Picks and Enter Events default to; locked determines whether picks can
+  Picks and Episode Events default to; locked determines whether picks can
   still be submitted/changed. You'll usually flip both together (make an
   episode active when it airs, lock it once tribal council happens), but
   they're independent so you have room to, say, unlock a past episode to fix
@@ -243,7 +247,7 @@ app/
   page.tsx                Home (spoiler-free standings)
   picks/page.tsx           My Picks (draft + survivor reference)
   scores/page.tsx           Scores (stacked bar charts, by player/survivor)
-  events/page.tsx            Enter Events (open to all signed-in users)
+  events/page.tsx            Episode Events (readable by all, logging admin-only)
   scoring/page.tsx             Scoring Guide (public; inline edit + CSV upload for admins)
   admin/page.tsx              Admin: Season Control (+ Season Setup) / Update Survivors / Assign Tribes
   login/page.tsx                Simple name-based sign-in
@@ -284,7 +288,7 @@ components/
   NavBar.tsx               Season-aware header, admin link for admins
   StackedPointsChart.tsx      Recharts stacked bar chart (Scores page)
   CsvUpload.tsx                  Drag-and-drop CSV upload widget (Season Setup, Scoring Guide)
-  SurvivorAvatar.tsx               Photo w/ broken-image fallback (My Picks, Enter Events)
+  SurvivorAvatar.tsx               Photo w/ broken-image fallback (My Picks, Episode Events)
 templates/
   survivors_s51.csv        Example roster CSV
   event_types_s51.csv        Example scoring CSV

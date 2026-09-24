@@ -61,7 +61,7 @@ export default function NavBar() {
           <NavLink href="/picks" label="My Picks" />
           <NavLink href="/scores" label="Scores" />
           <NavLink href="/scoring" label="Scoring Guide" />
-          {user && <NavLink href="/events" label="Enter Events" />}
+          {user && <NavLink href="/events" label="Episode Events" />}
           {user?.is_admin && <NavLink href="/admin" label="Admin" />}
           <Link
             href="/login"
