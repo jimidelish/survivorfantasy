@@ -504,7 +504,7 @@ function AdvantageTransferModal({
                     : "border-surface2 text-muted"
                 }`}
               >
-                Used it themselves
+                Used for someone
               </button>
               <button
                 type="button"
