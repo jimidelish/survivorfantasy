@@ -124,7 +124,12 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   time (same philosophy as `events.point_value`), not a live FK to
   `tribes` — a later rename/recolor/delete of that tribe never rewrites a
   survivor's past. My Picks renders the full chain, all but the last
-  struck through.
+  struck through. Admin > Update Survivors shows the same chain with a
+  delete (×) button on each past entry (`DELETE
+  /api/admin/tribe-history/[id]`) for correcting a mistaken assignment —
+  that route refuses to delete the *most recent* entry for a survivor,
+  since My Picks' "current tribe" display is just "last entry in history,"
+  and that has to stay in sync with `survivors.current_tribe_id`.
 - **The host** (`survivors.is_host`, e.g. Jeff Probst) is a real
   `survivors` row — pickable on My Picks and scored per-season through the
   exact same picks/events machinery as any cast member — but never

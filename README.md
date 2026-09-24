@@ -118,6 +118,12 @@ which keeps the row for history). Shot in the Dark is one of the advantage
 types here, not a separate field — Season Setup CSV import grants every
 survivor an active one automatically.
 
+Below the tribe dropdown, their full tribe path is shown the same way as
+My Picks (past tribes struck through, current one not) — with an **×** on
+each past entry to delete it from history, for correcting a mistaken
+assignment. The current (most recent) entry can't be deleted this way;
+reassign them to a different tribe instead, which appends a new entry.
+
 ### Assign Tribes — manage tribes and drag survivors onto them
 
 Add, rename, recolor, or delete this season's tribes (starting tribes, a
@@ -320,6 +326,7 @@ app/
     admin/survivors/[id]/                           Update eliminated status/tribe
     admin/advantages/, admin/advantages/[id]/         Grant/mark-used/remove advantages
     admin/tribes/, admin/tribes/[id]/                   Add/rename/recolor/delete tribes
+    admin/tribe-history/[id]/                             Delete a past tribe-history entry
     admin/seasons/[id]/                                   Lock/unlock winner picks
 lib/
   supabaseAdmin.ts        Server-only Supabase client (service role key)

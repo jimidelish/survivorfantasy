@@ -426,6 +426,16 @@ function UpdateSurvivorsTab() {
     refresh();
   }
 
+  async function removeTribeHistoryEntry(historyId: string) {
+    const res = await fetch(`/api/admin/tribe-history/${historyId}`, { method: "DELETE" });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      window.alert(data.error || "Couldn't delete that entry.");
+      return;
+    }
+    refresh();
+  }
+
   if (loading) return <p className="text-sm text-muted">Loading survivors…</p>;
 
   return (
@@ -445,6 +455,7 @@ function UpdateSurvivorsTab() {
             onAddAdvantage={(type) => addAdvantage(s.id, type)}
             onSetAdvantageStatus={setAdvantageStatus}
             onRemoveAdvantage={removeAdvantage}
+            onRemoveTribeHistoryEntry={removeTribeHistoryEntry}
           />
         ))}
       </div>
@@ -459,6 +470,7 @@ function SurvivorRow({
   onAddAdvantage,
   onSetAdvantageStatus,
   onRemoveAdvantage,
+  onRemoveTribeHistoryEntry,
 }: {
   survivor: Survivor;
   tribes: Tribe[];
@@ -470,6 +482,7 @@ function SurvivorRow({
   onAddAdvantage: (type: string) => void;
   onSetAdvantageStatus: (advantageId: string, status: "active" | "used") => void;
   onRemoveAdvantage: (advantageId: string) => void;
+  onRemoveTribeHistoryEntry: (historyId: string) => void;
 }) {
   const [newAdvantageType, setNewAdvantageType] = useState<string>(ADVANTAGE_TYPES[0]);
 
@@ -529,6 +542,32 @@ function SurvivorRow({
               title={survivor.current_tribe.name}
             />
           )}
+        </div>
+      )}
+
+      {!survivor.is_host && survivor.tribe_history && survivor.tribe_history.length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1 text-xs">
+          {survivor.tribe_history.map((h, i, arr) => {
+            const isCurrent = i === arr.length - 1;
+            return (
+              <span key={h.id} className="flex items-center gap-1">
+                {i > 0 && <span className="text-muted/40">→</span>}
+                <span className={isCurrent ? "text-muted" : "text-muted/50 line-through"}>
+                  {h.tribe_name}
+                </span>
+                {!isCurrent && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveTribeHistoryEntry(h.id)}
+                    className="text-muted hover:text-rust"
+                    title={`Delete "${h.tribe_name}" from tribe history`}
+                  >
+                    ×
+                  </button>
+                )}
+              </span>
+            );
+          })}
         </div>
       )}
 
