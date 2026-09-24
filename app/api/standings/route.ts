@@ -13,8 +13,11 @@ export async function GET() {
     .select("id, name");
   if (usersError) return NextResponse.json({ error: usersError.message }, { status: 500 });
 
+  // The "real" total, including the winner-pick bonus — see schema.sql's
+  // comments on user_season_points vs user_season_points_with_winner_pick
+  // if you ever need to compare against the bonus-free baseline.
   const { data: points, error: pointsError } = await supabaseAdmin
-    .from("user_season_points")
+    .from("user_season_points_with_winner_pick")
     .select("user_id, points")
     .eq("season_id", season.id);
   if (pointsError) return NextResponse.json({ error: pointsError.message }, { status: 500 });

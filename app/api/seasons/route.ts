@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("seasons")
-    .select("id, number, name")
+    .select("id, number, name, winner_picks_locked")
     .order("number", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

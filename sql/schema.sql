@@ -7,16 +7,22 @@ create extension if not exists "pgcrypto";
 
 -- ============================================================
 -- SEASONS
--- The app has no season-switching UI: "current season" is always
--- whichever row has the highest `number`. To start a new season,
--- just insert a new row here with a higher number — everything else
--- (episodes, survivors, picks) is scoped to a season_id and the app
--- will automatically start pointing at the new one.
+-- "Current season" (used by every page except Admin > Season Control,
+-- which has its own season picker) is always whichever row has the
+-- highest `number`. To start a new season, just insert a new row here
+-- with a higher number — everything else (episodes, survivors, picks)
+-- is scoped to a season_id and the app will automatically start
+-- pointing at the new one.
 -- ============================================================
 create table if not exists seasons (
   id uuid primary key default gen_random_uuid(),
   number integer not null unique,
   name text,
+  -- Toggled from Admin > Season Control. While true, POST /api/winner-pick
+  -- rejects new/changed winner picks for this season server-side (same
+  -- enforcement style as episodes.locked on POST /api/picks) — not just a
+  -- client-side admin-UI gate.
+  winner_picks_locked boolean not null default false,
   created_at timestamptz not null default now()
 );
 
@@ -191,6 +197,28 @@ create table if not exists picks (
 create index if not exists idx_picks_user_episode on picks(user_id, episode_id);
 
 -- ============================================================
+-- WINNER PICKS
+-- One survivor per (user, season) — a season-long bet, not tied to any
+-- episode's weekly picks/budget. Worth +1x that survivor's points on top
+-- of whatever the user separately picks them at each week (stacks, doesn't
+-- replace), for every episode of the season including ones before the
+-- pick was made and ones after the survivor is eliminated. Freely
+-- changeable (upsert on user_id+season_id) until an admin locks the season
+-- via Admin > Season Control (seasons.winner_picks_locked).
+-- ============================================================
+create table if not exists winner_picks (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id) on delete cascade,
+  season_id uuid not null references seasons(id) on delete cascade,
+  survivor_id uuid not null references survivors(id) on delete cascade,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, season_id)
+);
+
+create index if not exists idx_winner_picks_season on winner_picks(season_id);
+
+-- ============================================================
 -- POINTS CALCULATION VIEWS
 -- Computed on the fly from events/picks, so they're always in sync —
 -- no separate table to keep updated when events or event_types change.
@@ -205,8 +233,13 @@ select
 from events e
 group by e.episode_id, e.survivor_id;
 
--- Total points each user scored in each episode (their picks' survivor
--- points, multiplied by the multiplier they assigned that survivor).
+-- Total points each user scored in each episode from their weekly picks
+-- ONLY — deliberately does NOT include the winner-pick bonus, so the
+-- multiplier budget's trailing-leader calculation (lib/multiplierBudget.ts)
+-- stays unaffected by that separate, still-being-balanced feature, and so
+-- this number stays queryable on its own as a "without winner pick"
+-- baseline for as long as that's useful. See user_episode_points_with_
+-- winner_pick below for the total actually shown as real standings.
 create or replace view user_episode_points as
 select
   p.user_id,
@@ -217,8 +250,37 @@ left join survivor_episode_points sep
   on sep.episode_id = p.episode_id and sep.survivor_id = p.survivor_id
 group by p.user_id, p.episode_id;
 
--- Season-to-date totals per user (used for home page standings and for
--- computing the "behind the leader" multiplier bonus).
+-- Just the winner-pick bonus component, isolated: a user's winner pick's
+-- survivor's points that episode (flat x1), for every episode of that
+-- pick's season — even one where they didn't separately pick that
+-- survivor at all, and even after the survivor is eliminated.
+create or replace view winner_pick_episode_points as
+select
+  wp.user_id,
+  e.id as episode_id,
+  coalesce(sep.points, 0) as points
+from winner_picks wp
+join episodes e on e.season_id = wp.season_id
+left join survivor_episode_points sep
+  on sep.episode_id = e.id and sep.survivor_id = wp.survivor_id;
+
+-- The "real" per-episode total: weekly-picks points plus the winner-pick
+-- bonus. A full outer join because either side can have a row the other
+-- lacks (e.g. a winner pick with no matching weekly pick that episode).
+-- This — not the plain user_episode_points above — is what Scores and
+-- Home standings actually display.
+create or replace view user_episode_points_with_winner_pick as
+select
+  coalesce(uep.user_id, wpp.user_id) as user_id,
+  coalesce(uep.episode_id, wpp.episode_id) as episode_id,
+  coalesce(uep.points, 0) + coalesce(wpp.points, 0) as points
+from user_episode_points uep
+full outer join winner_pick_episode_points wpp
+  on uep.user_id = wpp.user_id and uep.episode_id = wpp.episode_id;
+
+-- Season-to-date totals per user, weekly picks only — feeds the
+-- multiplier budget's "behind the leader" bonus, and doubles as the
+-- "without winner pick" comparison baseline.
 create or replace view user_season_points as
 select
   ep.season_id,
@@ -227,6 +289,17 @@ select
 from user_episode_points uep
 join episodes ep on ep.id = uep.episode_id
 group by ep.season_id, uep.user_id;
+
+-- Season-to-date totals including the winner-pick bonus — what Home
+-- standings and Scores actually display as real season totals.
+create or replace view user_season_points_with_winner_pick as
+select
+  ep.season_id,
+  uepw.user_id,
+  sum(uepw.points) as points
+from user_episode_points_with_winner_pick uepw
+join episodes ep on ep.id = uepw.episode_id
+group by ep.season_id, uepw.user_id;
 
 -- ============================================================
 -- SEED DATA

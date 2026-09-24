@@ -8,6 +8,12 @@ export interface Season {
   id: string;
   number: number;
   name: string | null;
+  winner_picks_locked: boolean;
+}
+
+export interface WinnerPick {
+  survivor_id: string | null;
+  locked: boolean;
 }
 
 export const ADVANTAGE_TYPES = [

@@ -8,7 +8,7 @@ import { Season } from "@/lib/types";
 export async function getCurrentSeason(): Promise<Season | null> {
   const { data, error } = await supabaseAdmin
     .from("seasons")
-    .select("id, number, name")
+    .select("id, number, name, winner_picks_locked")
     .order("number", { ascending: false })
     .limit(1)
     .maybeSingle();

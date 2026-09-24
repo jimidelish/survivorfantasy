@@ -21,7 +21,8 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
 ## Core game logic (the parts most likely to need touching)
 
 - **"Current season"** is always whichever row in `seasons` has the highest
-  `number` — no season-switcher UI. Resolved server-side by
+  `number` — every page uses this except Admin > Season Control, which has
+  its own season picker (see below). Resolved server-side by
   `lib/currentSeason.ts`. Currently on **Season 51**.
 - **Auth stays name-only** (pick from a list, `localStorage`, no per-user
   passwords) **except selecting an admin account**, which requires a single
@@ -35,9 +36,30 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   100 points they trailed the season point leader as of the *previous*
   episode. Max 3× on any single survivor, no cap on how many survivors.
   Computed live, never stored — depends on `user_episode_points` view.
-- **Points** are three SQL views, computed fresh on every read, never
-  materialized: `survivor_episode_points`, `user_episode_points`,
-  `user_season_points`. See schema comments for the exact joins.
+- **Points** are SQL views, computed fresh on every read, never
+  materialized. `survivor_episode_points` is the base. `user_episode_points`
+  / `user_season_points` are **weekly picks only, deliberately excluding
+  the winner-pick bonus** — this is what `lib/multiplierBudget.ts`'s
+  trailing-leader calculation reads, and it's also the "without winner
+  pick" baseline, kept queryable on its own since that feature is still
+  being balanced/may change. `winner_pick_episode_points` isolates just the
+  bonus component. `user_episode_points_with_winner_pick` /
+  `user_season_points_with_winner_pick` (both `full outer join`s, since
+  either side can have a row the other lacks) are the **real totals** —
+  what `/api/standings` (Home) and `/api/points?by=user` (Scores) actually
+  query. If this feature is ever removed or reworked, those are the two
+  routes to repoint back at the plain views. See schema comments for the
+  exact joins.
+- **Winner picks** (`winner_picks` table, one row per `user_id`+`season_id`):
+  a user's single season-long bet on who wins, set/changed freely on My
+  Picks until an admin locks it (`seasons.winner_picks_locked`, toggled
+  from Season Control, enforced server-side by `POST /api/winner-pick` the
+  same way `episodes.locked` gates `POST /api/picks`). Worth a flat +1x
+  that survivor's points every episode of the season — retroactively for
+  episodes before the pick was made, and continuing after the survivor is
+  eliminated — **on top of** whatever the user separately picks them at
+  that week (stacks, uncapped). Can't be an eliminated survivor or the
+  host.
 - **Events snapshot their point value** at the moment they're logged
   (`events.point_value` is a copy of `event_types.point_value` at insert
   time), so later balance changes to `event_types` never rewrite history.
@@ -125,7 +147,9 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   section at the bottom of Season Control now (still creates the season
   from the CSV filename if it doesn't exist, and still full-replaces that
   season's cast — independent of whichever season is selected in the
-  picker above it, which only drives episodes/picks).
+  picker above it, which only drives episodes/picks). A **Lock/Unlock
+  winner picks** button (`PATCH /api/admin/seasons/[id]`) also lives here,
+  toggling `winner_picks_locked` for whichever season is selected.
 - **Event Type Setup no longer exists as a tab** — sunset in favor of the
   public `/scoring` (Scoring Guide) page, which does everything it did
   (same `event_types_s{N}.csv` upload, same `POST /api/admin/event-types-csv`

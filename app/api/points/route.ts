@@ -28,8 +28,11 @@ export async function GET(req: NextRequest) {
     const [{ data: users, error: usersError }, { data: points, error: pointsError }] =
       await Promise.all([
         supabaseAdmin.from("users").select("id, name"),
+        // The "real" per-episode total, including the winner-pick bonus —
+        // see schema.sql's comments on user_episode_points vs _with_
+        // winner_pick if you ever need the bonus-free baseline instead.
         supabaseAdmin
-          .from("user_episode_points")
+          .from("user_episode_points_with_winner_pick")
           .select("user_id, episode_id, points")
           .in("episode_id", episodeIds),
       ]);

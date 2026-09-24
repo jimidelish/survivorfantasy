@@ -78,6 +78,9 @@ regardless of what's selected here.
   automatically changed (eliminated status, advantages, vote status) first.
 - View every user's submitted picks for any episode (survivor + multiplier),
   read-only.
+- **Lock/Unlock winner picks** for the selected season — while locked, no
+  one can set or change their winner pick (enforced server-side, not just
+  hidden in the UI). Starts unlocked for every season.
 
 At the bottom, **Season Setup** uploads a survivor roster CSV named
 **`survivors_s{season}.csv`** (e.g. `survivors_s51.csv`) — independent of
@@ -147,12 +150,34 @@ never stored, so it can't drift out of sync with actual standings.
 3. A survivor's total points in an episode = sum of their logged events that
    episode (`survivor_episode_points` view).
 4. A user's points in an episode = sum, across their picks, of
-   `survivor's episode points × multiplier assigned` (`user_episode_points` view).
+   `survivor's episode points × multiplier assigned` (`user_episode_points`
+   view) — see **Winner pick** below for the separate bonus on top of this.
 5. Season standings = sum of a user's points across every episode
    (`user_season_points` view).
 
-All three are SQL views, computed fresh on every read — there's no
+These are all SQL views, computed fresh on every read — there's no
 materialized/stored points table to keep in sync.
+
+### Winner pick
+
+Once per season, each user can pick one survivor as their bet on who wins
+— from My Picks, separate from the weekly per-episode picks above. It's
+worth **+1×** that survivor's points on top of whatever they're separately
+picked at that week, for **every episode of the season** — including ones
+before the winner pick was made, and ones after that survivor is
+eliminated. It doesn't touch the weekly multiplier budget at all. Freely
+changeable until an admin locks it for that season from Season Control
+(`seasons.winner_picks_locked`, enforced server-side). Can't be an already-
+eliminated survivor, or the host.
+
+This bonus is deliberately kept as a **separate layer**, not folded into
+`user_episode_points`/`user_season_points` above — those two stay
+winner-pick-free on purpose (which is also what the weekly multiplier
+budget's trailing-leader bonus is computed from), so the feature can be
+compared against a "without it" baseline, or removed later, without
+losing history. `user_episode_points_with_winner_pick` /
+`user_season_points_with_winner_pick` add the bonus back in, and are what
+Scores and Home actually display as real standings.
 
 ---
 
@@ -169,6 +194,15 @@ materialized/stored points table to keep in sync.
   "Host," and sorted right after the active cast and before eliminated
   survivors — with no tribe, elimination, or vote status, since none of
   that applies to him.
+
+  A **Winner pick** card sits above the episode selector, separate from
+  the weekly picks below it since it's a season-long choice, not tied to
+  any one episode: pick one (non-eliminated, non-host) survivor as your
+  bet on who wins, freely changeable until an admin locks it from Season
+  Control. It's worth +1× that survivor's points every episode of the
+  season — on top of whatever you separately pick them at that week, and
+  continuing even after they're eliminated — without using any of your
+  weekly multiplier budget.
 - **Scores (`/scores`)** — one page, toggle between a stacked bar chart of
   points **by player** or **by survivor**, each bar segmented by episode, plus
   a sorted totals list below.
@@ -265,6 +299,7 @@ app/
     events/[id]/advantage-transfer/      Completes the "given/used for someone else" trigger
     picks/                             Get/submit picks
     picks/budget/                      Compute a user's multiplier budget
+    winner-pick/                        Get/set a user's winner pick (current season)
     points/                              Per-episode points, by user or survivor
     standings/                            Season-to-date leaderboard
     users/                                  Name-based login
@@ -276,6 +311,7 @@ app/
     admin/survivors/[id]/                           Update eliminated status/tribe
     admin/advantages/, admin/advantages/[id]/         Grant/mark-used/remove advantages
     admin/tribes/, admin/tribes/[id]/                   Add/rename/recolor/delete tribes
+    admin/seasons/[id]/                                   Lock/unlock winner picks
 lib/
   supabaseAdmin.ts        Server-only Supabase client (service role key)
   currentSeason.ts          Resolves "current" = highest season number

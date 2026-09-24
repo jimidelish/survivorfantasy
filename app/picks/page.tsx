@@ -41,6 +41,12 @@ export default function PicksPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [winnerPickSurvivorId, setWinnerPickSurvivorId] = useState<string | null>(null);
+  const [winnerPickDraft, setWinnerPickDraft] = useState<string>("");
+  const [winnerPicksLocked, setWinnerPicksLocked] = useState(false);
+  const [savingWinnerPick, setSavingWinnerPick] = useState(false);
+  const [winnerPickError, setWinnerPickError] = useState<string | null>(null);
+
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
@@ -49,6 +55,35 @@ export default function PicksPage() {
     }
     setUser(JSON.parse(raw));
   }, [router]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/winner-pick?user_id=${user.id}`)
+      .then((r) => r.json())
+      .then((data) => {
+        setWinnerPickSurvivorId(data.survivor_id || null);
+        setWinnerPickDraft(data.survivor_id || "");
+        setWinnerPicksLocked(!!data.locked);
+      });
+  }, [user]);
+
+  async function saveWinnerPick() {
+    if (!user || !winnerPickDraft) return;
+    setSavingWinnerPick(true);
+    setWinnerPickError(null);
+    const res = await fetch("/api/winner-pick", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id, survivor_id: winnerPickDraft }),
+    });
+    const data = await res.json();
+    setSavingWinnerPick(false);
+    if (!res.ok) {
+      setWinnerPickError(data.error || "Something went wrong.");
+      return;
+    }
+    setWinnerPickSurvivorId(data.survivor_id);
+  }
 
   useEffect(() => {
     Promise.all([
@@ -100,6 +135,19 @@ export default function PicksPage() {
     }
     return stats;
   }, [statsData, currentEpisode]);
+
+  // New winner-pick selections exclude eliminated/host survivors, but an
+  // *existing* pick must stay selectable even after they're eliminated —
+  // the pick itself stays valid and keeps scoring, only new choices are
+  // restricted.
+  const winnerPickOptions = useMemo(() => {
+    const eligible = survivors.filter((s) => !s.eliminated && !s.is_host);
+    const current = survivors.find((s) => s.id === winnerPickSurvivorId);
+    if (current && !eligible.some((s) => s.id === current.id)) {
+      return [current, ...eligible];
+    }
+    return eligible;
+  }, [survivors, winnerPickSurvivorId]);
 
   const totalUsed = useMemo(
     () => Object.values(picks).reduce((sum, m) => sum + m, 0),
@@ -169,6 +217,52 @@ export default function PicksPage() {
         Assign your multiplier budget across any number of survivors — up to{" "}
         {MAX_MULTIPLIER_PER_SURVIVOR}× on any one survivor.
       </p>
+
+      <div className="mt-6 rounded-md border border-surface2 bg-surface px-5 py-4">
+        <div className="flex items-center justify-between">
+          <span className="font-display text-lg">Winner pick</span>
+          {winnerPicksLocked && (
+            <span className="rounded-full bg-rust/20 px-3 py-1 text-xs text-rust">Locked</span>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-muted">
+          One survivor for the whole season — worth +1× their points every episode on top of
+          your weekly picks, even after they're eliminated. Doesn&apos;t use any of your weekly
+          budget.
+        </p>
+        {winnerPicksLocked ? (
+          <p className="mt-3 text-sm text-parchment">
+            {survivors.find((s) => s.id === winnerPickSurvivorId)?.name || "You didn't lock one in."}
+          </p>
+        ) : (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <select
+              value={winnerPickDraft}
+              onChange={(e) => setWinnerPickDraft(e.target.value)}
+              className="rounded-md border border-surface2 bg-surface2 px-3 py-2 text-sm"
+            >
+              <option value="">No pick yet</option>
+              {winnerPickOptions.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                  {s.eliminated ? " (eliminated)" : ""}
+                </option>
+              ))}
+            </select>
+            {winnerPickDraft && winnerPickDraft !== (winnerPickSurvivorId || "") && (
+              <button
+                type="button"
+                onClick={saveWinnerPick}
+                disabled={savingWinnerPick}
+                className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90 disabled:opacity-40"
+              >
+                {savingWinnerPick ? "Saving…" : "Save"}
+              </button>
+            )}
+          </div>
+        )}
+        {winnerPickError && <p className="mt-2 text-sm text-rust">{winnerPickError}</p>}
+      </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <select

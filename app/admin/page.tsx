@@ -207,11 +207,24 @@ function SeasonControlTab() {
     refreshEpisodes();
   }
 
+  async function toggleWinnerPicksLock() {
+    if (!selectedSeason) return;
+    const res = await fetch(`/api/admin/seasons/${selectedSeason.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ winner_picks_locked: !selectedSeason.winner_picks_locked }),
+    });
+    const updated = await res.json();
+    if (!res.ok) return;
+    setSeasons((prev) => prev.map((s) => (s.id === updated.id ? updated : s)));
+  }
+
   // The list is sorted newest-first by the API, so the first entry is
   // always "current" (highest number) — same definition the rest of the
   // app uses (see lib/currentSeason.ts), just computed client-side here to
   // avoid a second fetch.
   const currentSeasonNumber = seasons[0]?.number;
+  const selectedSeason = seasons.find((s) => s.id === selectedSeasonId);
 
   if (loading) return <p className="text-sm text-muted">Loading…</p>;
 
@@ -236,6 +249,27 @@ function SeasonControlTab() {
         season is actually current ({currentSeasonNumber ?? "—"}), regardless of which one you're
         managing here.
       </p>
+
+      {selectedSeason && (
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            type="button"
+            onClick={toggleWinnerPicksLock}
+            className={`rounded-full px-4 py-1.5 text-xs font-medium ${
+              selectedSeason.winner_picks_locked
+                ? "border border-rust/50 text-rust hover:bg-rust/10"
+                : "border border-gold/50 text-gold hover:bg-gold/10"
+            }`}
+          >
+            {selectedSeason.winner_picks_locked ? "Unlock winner picks" : "Lock winner picks"}
+          </button>
+          <span className="text-xs text-muted">
+            {selectedSeason.winner_picks_locked
+              ? "No one can set or change their winner pick for this season."
+              : "Players can still set or change their winner pick for this season."}
+          </span>
+        </div>
+      )}
 
       <form onSubmit={addEpisode} className="mt-6 flex flex-wrap gap-2">
         <input
