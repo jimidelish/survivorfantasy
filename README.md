@@ -38,9 +38,9 @@ to create your first account.
 
 1. Push this project to a GitHub repository.
 2. Import it at [vercel.com](https://vercel.com) — Vercel auto-detects Next.js.
-3. Add the same three environment variables under Project Settings before
+3. Add the same environment variables under Project Settings before
    deploying: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`.
+   `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_ACCESS_PASSWORD`.
 4. Click **Deploy**. From then on, `git push` automatically redeploys.
 
 ---
@@ -199,8 +199,14 @@ materialized/stored points table to keep in sync.
   episode active when it airs, lock it once tribal council happens), but
   they're independent so you have room to, say, unlock a past episode to fix
   a mistake without changing what's currently "active."
-- **Auth is intentionally simple** — name-only, no passwords. Fine for a
-  trusted friend group; swap in Supabase Auth (magic links) if you need more.
+- **Auth is intentionally simple** — name-only, no per-account passwords.
+  Fine for a trusted friend group; swap in Supabase Auth (magic links) if
+  you need more. The one exception: selecting an **admin** account on the
+  login page requires a single shared passphrase
+  (`ADMIN_ACCESS_PASSWORD`, checked server-side by
+  `/api/admin/verify-password`) — a deterrent against casually clicking
+  into admin, not real per-user credentials. If that env var isn't set, no
+  one can sign in as an admin at all.
 - **Advantages** are modeled as their own table
   (`survivor_advantages`) rather than a single field on `survivors`,
   specifically so a survivor can hold more than one at a time (e.g. an Idol
@@ -237,6 +243,7 @@ app/
     points/                              Per-episode points, by user or survivor
     standings/                            Season-to-date leaderboard
     users/                                  Name-based login
+    admin/verify-password/                    Shared admin passphrase check
     admin/survivors-csv/                     Season Setup CSV upload
     admin/event-types-csv/                     Scoring Guide's bulk CSV upload (full replace)
     admin/event-types/[id]/                      Scoring Guide's inline point-value edit

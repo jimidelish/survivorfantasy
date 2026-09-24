@@ -23,6 +23,13 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
 - **"Current season"** is always whichever row in `seasons` has the highest
   `number` — no season-switcher UI. Resolved server-side by
   `lib/currentSeason.ts`. Currently on **Season 51**.
+- **Auth stays name-only** (pick from a list, `localStorage`, no per-user
+  passwords) **except selecting an admin account**, which requires a single
+  shared passphrase (`ADMIN_ACCESS_PASSWORD` env var, checked server-side by
+  `POST /api/admin/verify-password`, prompted inline on the login page
+  before `localStorage` is set to that identity). It's a deterrent, not
+  real per-user auth — one password unlocks every admin account, and if the
+  env var isn't set, nobody can sign in as an admin at all.
 - **Multiplier budget** (`lib/multiplierBudget.ts`): every user gets a base of
   7 points to split across survivors each episode, +1 bonus for every full
   100 points they trailed the season point leader as of the *previous*
