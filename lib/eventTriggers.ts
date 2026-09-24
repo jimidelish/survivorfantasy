@@ -23,7 +23,12 @@ export type TriggerEffect =
   | { kind: "beware_complete"; advantageId: string | null; previousHasVote: boolean }
   | { kind: "set_eliminated"; previousEliminated: boolean }
   | { kind: "lose_vote"; previousHasVote: boolean }
-  | { kind: "advantage_transfer"; sourceAdvantageId: string; createdAdvantageId: string | null };
+  | {
+      kind: "advantage_transfer";
+      sourceAdvantageId: string;
+      createdAdvantageId: string | null;
+      createdEventId: string | null;
+    };
 
 interface TriggerDefinition {
   category: string;
@@ -126,4 +131,16 @@ const triggerLookup = new Map<string, TriggerAction>(
 
 export function getTriggerAction(category: string, name: string): TriggerAction | null {
   return triggerLookup.get(`${category}::${name}`) || null;
+}
+
+// The "Obtains" trigger event that grants a given advantage type, if one
+// exists (Beware Advantage and Shot in the Dark are granted other ways, not
+// via a standalone "obtains" trigger, so this returns null for those). Used
+// when an advantage is given to someone else, to also log a normal event
+// recording that they received it.
+export function getObtainEventFor(advantageType: string): { category: string; name: string } | null {
+  const match = EVENT_TRIGGERS.find(
+    (t) => t.action.kind === "add_advantage" && t.action.advantageType === advantageType
+  );
+  return match ? { category: match.category, name: match.name } : null;
 }

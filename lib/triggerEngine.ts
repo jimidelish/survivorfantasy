@@ -150,6 +150,13 @@ export async function reverseTriggerEffect(survivorId: string, effect: TriggerEf
       if (effect.createdAdvantageId) {
         await supabaseAdmin.from("survivor_advantages").delete().eq("id", effect.createdAdvantageId);
       }
+      if (effect.createdEventId) {
+        // The "someone received it" event this transfer logged for the
+        // recipient — remove it too, since undoing the transfer means it
+        // never happened. Harmless if it's already gone (e.g. cleared as
+        // part of the same episode-wide "Clear all events").
+        await supabaseAdmin.from("events").delete().eq("id", effect.createdEventId);
+      }
       return;
   }
 }

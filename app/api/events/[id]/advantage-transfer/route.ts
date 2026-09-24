@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import supabaseAdmin from "@/lib/supabaseAdmin";
-import { TriggerEffect } from "@/lib/eventTriggers";
+import { TriggerEffect, getObtainEventFor } from "@/lib/eventTriggers";
 
 // Completes the "Advantage Given to/Used for Someone Else" trigger, which
 // can't apply automatically since it needs to know which advantage, and
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const { data: event, error: eventError } = await supabaseAdmin
     .from("events")
-    .select("id, survivor_id, trigger_effect")
+    .select("id, episode_id, survivor_id, entered_by_user_id, trigger_effect")
     .eq("id", params.id)
     .single();
   if (eventError || !event) {
@@ -66,6 +66,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   if (markUsedError) return NextResponse.json({ error: markUsedError.message }, { status: 500 });
 
   let createdAdvantageId: string | null = null;
+  let createdEvent: any = null;
+
   if (disposition === "given") {
     const { data: created, error: createError } = await supabaseAdmin
       .from("survivor_advantages")
@@ -76,12 +78,46 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: createError?.message || "Couldn't grant the advantage." }, { status: 500 });
     }
     createdAdvantageId = created.id;
+
+    // Also log a normal event for the recipient recording that they
+    // received it — only for "given" (a real transfer of possession), never
+    // for "used", where nothing actually changes hands. Skipped silently if
+    // this advantage type has no standalone "Obtains" event (e.g. Beware
+    // Advantage, Shot in the Dark).
+    const obtainEvent = getObtainEventFor(advantage.type);
+    if (obtainEvent) {
+      const { data: eventType } = await supabaseAdmin
+        .from("event_types")
+        .select("id, point_value")
+        .eq("category", obtainEvent.category)
+        .eq("name", obtainEvent.name)
+        .eq("active", true)
+        .maybeSingle();
+
+      if (eventType) {
+        const { data: newEvent } = await supabaseAdmin
+          .from("events")
+          .insert({
+            episode_id: event.episode_id,
+            survivor_id: recipientId,
+            event_type_id: eventType.id,
+            point_value: eventType.point_value,
+            entered_by_user_id: event.entered_by_user_id,
+          })
+          .select(
+            "id, episode_id, survivor_id, event_type_id, point_value, created_at, survivors(name), event_types(category, name)"
+          )
+          .single();
+        createdEvent = newEvent || null;
+      }
+    }
   }
 
   const effect: TriggerEffect = {
     kind: "advantage_transfer",
     sourceAdvantageId: advantageId,
     createdAdvantageId,
+    createdEventId: createdEvent?.id ?? null,
   };
 
   const { error: updateEventError } = await supabaseAdmin
@@ -90,5 +126,5 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     .eq("id", params.id);
   if (updateEventError) return NextResponse.json({ error: updateEventError.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, advantageType: advantage.type });
+  return NextResponse.json({ ok: true, advantageType: advantage.type, createdEvent });
 }

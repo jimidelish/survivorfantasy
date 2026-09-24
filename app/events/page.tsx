@@ -185,8 +185,9 @@ export default function EventsPage() {
     setExpandedCategories(new Set());
   }
 
-  function resolveTransfer() {
+  function resolveTransfer(createdEvent?: SurvivorEvent) {
     setPendingTransfers((prev) => prev.slice(1));
+    if (createdEvent) setEvents((prev) => [createdEvent, ...prev]);
     refreshSurvivors();
   }
 
@@ -416,7 +417,7 @@ export default function EventsPage() {
           survivor={survivors.find((s) => s.id === pendingTransfers[0].survivor_id)}
           allSurvivors={survivors}
           onResolved={resolveTransfer}
-          onSkip={resolveTransfer}
+          onSkip={() => resolveTransfer()}
         />
       )}
     </div>
@@ -433,7 +434,7 @@ function AdvantageTransferModal({
   transfer: PendingTransfer;
   survivor: Survivor | undefined;
   allSurvivors: Survivor[];
-  onResolved: () => void;
+  onResolved: (createdEvent?: SurvivorEvent) => void;
   onSkip: () => void;
 }) {
   const activeAdvantages = (survivor?.advantages || []).filter((a) => a.status === "active");
@@ -464,7 +465,7 @@ function AdvantageTransferModal({
       setError(data.error || "Something went wrong.");
       return;
     }
-    onResolved();
+    onResolved(data.createdEvent || undefined);
   }
 
   return (

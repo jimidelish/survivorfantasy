@@ -54,7 +54,13 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   to/Used for Someone Else" — can't apply automatically (needs to know
   which advantage, given-or-used, and who to) and instead logs normally,
   then surfaces a modal on the Enter Events page
-  (`POST /api/events/[id]/advantage-transfer` completes it). If a "Uses"
+  (`POST /api/events/[id]/advantage-transfer` completes it). Choosing
+  "given to someone" also logs a normal event for the recipient (that
+  type's "Obtains" trigger, via `lib/eventTriggers.ts`'s
+  `getObtainEventFor`) recording that they received it — "used for
+  someone" does not, since nothing changes hands. That extra event is
+  tracked on the *original* event's `trigger_effect.createdEventId` so
+  undoing the transfer removes it too. If a "Uses"
   trigger fires with no matching active advantage to act on, the event
   still logs — a warning is shown instead of blocking.
 - **"Active episode" ≠ "locked."** `episodes.is_current` (one true per season,
