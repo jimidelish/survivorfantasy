@@ -13,10 +13,15 @@ export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("survivors")
     .select(
-      "id, season_id, name, photo_url, original_tribe, current_tribe_id, current_tribe:tribes(id, season_id, name, color), eliminated, has_vote, survivor_advantages(id, survivor_id, type, status)"
+      "id, season_id, name, photo_url, original_tribe, current_tribe_id, current_tribe:tribes(id, season_id, name, color), eliminated, has_vote, is_host, survivor_advantages(id, survivor_id, type, status)"
     )
     .eq("season_id", season.id)
+    // Active survivors, then the host (e.g. Jeff Probst — never eliminated,
+    // so this is the only thing that places him after the cast and before
+    // eliminated survivors instead of alphabetically among the active ones),
+    // then eliminated survivors, alphabetical within each group.
     .order("eliminated", { ascending: true })
+    .order("is_host", { ascending: true })
     .order("name", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

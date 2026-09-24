@@ -84,11 +84,14 @@ export async function POST(req: NextRequest) {
     season = newSeason;
   }
 
-  // Full replace: only this season's survivors, nothing else.
+  // Full replace: only this season's cast, nothing else — excludes the
+  // host row (is_host), so re-uploading a roster never touches Jeff Probst
+  // or his picks/events history for this season.
   const { error: deleteError } = await supabaseAdmin
     .from("survivors")
     .delete()
-    .eq("season_id", season!.id);
+    .eq("season_id", season!.id)
+    .eq("is_host", false);
   if (deleteError) return NextResponse.json({ error: deleteError.message }, { status: 500 });
 
   const insertRows = rows.map((r) => ({
@@ -119,6 +122,23 @@ export async function POST(req: NextRequest) {
       }))
     );
     if (sitdError) return NextResponse.json({ error: sitdError.message }, { status: 500 });
+  }
+
+  // The host (Jeff Probst) shows up in every season, pickable and scored
+  // like any other survivor for that season — auto-created here rather
+  // than via CSV, since he's not part of any season's uploaded cast.
+  const { data: existingHost } = await supabaseAdmin
+    .from("survivors")
+    .select("id")
+    .eq("season_id", season!.id)
+    .eq("is_host", true)
+    .maybeSingle();
+
+  if (!existingHost) {
+    const { error: hostError } = await supabaseAdmin
+      .from("survivors")
+      .insert({ season_id: season!.id, name: "Jeff Probst", is_host: true });
+    if (hostError) return NextResponse.json({ error: hostError.message }, { status: 500 });
   }
 
   return NextResponse.json({

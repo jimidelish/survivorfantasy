@@ -87,6 +87,21 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   cascading). `survivors.original_tribe` stays plain text — it's a one-time
   snapshot from the Season Setup CSV and is never tribe-referenced. A null
   `current_tribe_id` renders as "No tribe" with no color styling.
+- **The host** (`survivors.is_host`, e.g. Jeff Probst) is a real
+  `survivors` row — pickable on My Picks and scored per-season through the
+  exact same picks/events machinery as any cast member — but never
+  eliminated, tribe-assigned, or vote-locked; the app hides those controls
+  for `is_host` rows rather than making `eliminated`/`has_vote` nullable.
+  `/api/survivors` sorts `eliminated asc, is_host asc, name asc`, which is
+  what puts him after the active cast and before eliminated survivors
+  (he's never eliminated himself, so alphabetical order alone would place
+  him among the active group by name). Auto-created by the Season Setup
+  CSV upload for every season (`app/api/admin/survivors-csv/route.ts`
+  inserts one if `is_host = true` doesn't already exist for that
+  `season_id`) — that same route's full-replace delete explicitly excludes
+  `is_host` rows, so re-uploading a season's cast never touches him or his
+  history. `idx_one_host_per_season` is a partial unique index backstopping
+  "at most one per season."
 
 ## Admin page (`/admin`, gated by `users.is_admin`)
 

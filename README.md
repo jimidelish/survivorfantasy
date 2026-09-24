@@ -71,10 +71,17 @@ The app parses the season number straight out of the filename. If that
 season doesn't exist yet, it's created automatically. This is a **full
 replace, scoped to that one season only**: every existing survivor for that
 season is deleted (cascading to any picks/events/advantages tied to them)
-before the new roster is inserted — other seasons are never touched. There's
-a confirmation checkbox in the UI before this runs. Survivors start with no
-current tribe assigned (tribes don't exist yet at CSV-upload time) — assign
-them afterward in Assign Tribes.
+before the new roster is inserted — other seasons are never touched, and
+neither is the host (see below). There's a confirmation checkbox in the UI
+before this runs. Survivors start with no current tribe assigned (tribes
+don't exist yet at CSV-upload time) — assign them afterward in Assign
+Tribes.
+
+This upload also makes sure the season has a **host** row (e.g. Jeff
+Probst) — creating one automatically if it's missing, never touching it if
+already there. He's not part of the CSV; he's pickable and scored per
+season like any other survivor, but with no tribe, elimination, or vote
+status.
 
 ### Season Control — episodes and picks
 
@@ -148,7 +155,10 @@ materialized/stored points table to keep in sync.
   multipliers to survivors. Each survivor card doubles as the "who's still
   in" reference: current tribe, season points, per-episode average, and any
   active advantages (Shot in the Dark included) as colored tags, right next
-  to the stepper.
+  to the stepper. The host (e.g. Jeff Probst) is pickable too, tagged
+  "Host," and sorted right after the active cast and before eliminated
+  survivors — with no tribe, elimination, or vote status, since none of
+  that applies to him.
 - **Scores (`/scores`)** — one page, toggle between a stacked bar chart of
   points **by player** or **by survivor**, each bar segmented by episode, plus
   a sorted totals list below.

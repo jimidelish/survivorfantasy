@@ -60,6 +60,7 @@ export interface Survivor {
   current_tribe: Tribe | null;
   eliminated: boolean;
   has_vote: boolean;
+  is_host: boolean;
   advantages?: SurvivorAdvantage[];
 }
 

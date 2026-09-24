@@ -30,7 +30,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     .update(update)
     .eq("id", params.id)
     .select(
-      "id, season_id, name, photo_url, original_tribe, current_tribe_id, current_tribe:tribes(id, season_id, name, color), eliminated, has_vote"
+      "id, season_id, name, photo_url, original_tribe, current_tribe_id, current_tribe:tribes(id, season_id, name, color), eliminated, has_vote, is_host"
     )
     .single();
 

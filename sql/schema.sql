@@ -66,9 +66,20 @@ create table if not exists survivors (
   current_tribe_id uuid references tribes(id) on delete set null,
   eliminated boolean not null default false,
   has_vote boolean not null default true, -- false = hit with a "no vote" twist/punishment
+  -- The host (Jeff Probst) — pickable and scored per-season like any other
+  -- survivor, but never eliminated/tribe-assigned/vote-locked; the app
+  -- hides those controls for is_host rows rather than making eliminated/
+  -- has_vote nullable. Auto-created for every season by the Season Setup
+  -- CSV upload (app/api/admin/survivors-csv/route.ts), which also excludes
+  -- is_host rows from its full-replace delete, so re-uploading a season's
+  -- cast roster never touches the host row (or his picks/events history).
+  is_host boolean not null default false,
   created_at timestamptz not null default now(),
   unique (season_id, name)
 );
+
+create unique index if not exists idx_one_host_per_season
+  on survivors(season_id) where is_host;
 
 create index if not exists idx_survivors_season on survivors(season_id);
 

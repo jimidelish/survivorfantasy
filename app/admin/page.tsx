@@ -408,50 +408,55 @@ function SurvivorRow({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="font-display text-lg">
           {survivor.name}
+          {survivor.is_host && <span className="ml-2 text-xs font-normal text-gold">Host</span>}
           {survivor.eliminated && <span className="ml-2 text-xs font-normal text-rust">Eliminated</span>}
         </p>
-        <div className="flex flex-wrap items-center gap-4">
-          <label className="flex items-center gap-1.5 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={survivor.eliminated}
-              onChange={(e) => onUpdate({ eliminated: e.target.checked })}
-            />
-            Eliminated
-          </label>
-          <label className="flex items-center gap-1.5 text-sm text-muted">
-            <input
-              type="checkbox"
-              checked={survivor.has_vote}
-              onChange={(e) => onUpdate({ has_vote: e.target.checked })}
-            />
-            Can vote
-          </label>
-        </div>
-      </div>
-
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <label className="text-sm text-muted">Current tribe:</label>
-        <select
-          value={survivor.current_tribe_id || ""}
-          onChange={(e) => onUpdate({ current_tribe_id: e.target.value || null })}
-          className="rounded-md border border-surface2 bg-surface2 px-2 py-1 text-sm"
-        >
-          <option value="">No tribe</option>
-          {tribes.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name}
-            </option>
-          ))}
-        </select>
-        {survivor.current_tribe && (
-          <span
-            className="h-3 w-3 rounded-full border border-surface2"
-            style={{ backgroundColor: survivor.current_tribe.color }}
-            title={survivor.current_tribe.name}
-          />
+        {!survivor.is_host && (
+          <div className="flex flex-wrap items-center gap-4">
+            <label className="flex items-center gap-1.5 text-sm text-muted">
+              <input
+                type="checkbox"
+                checked={survivor.eliminated}
+                onChange={(e) => onUpdate({ eliminated: e.target.checked })}
+              />
+              Eliminated
+            </label>
+            <label className="flex items-center gap-1.5 text-sm text-muted">
+              <input
+                type="checkbox"
+                checked={survivor.has_vote}
+                onChange={(e) => onUpdate({ has_vote: e.target.checked })}
+              />
+              Can vote
+            </label>
+          </div>
         )}
       </div>
+
+      {!survivor.is_host && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="text-sm text-muted">Current tribe:</label>
+          <select
+            value={survivor.current_tribe_id || ""}
+            onChange={(e) => onUpdate({ current_tribe_id: e.target.value || null })}
+            className="rounded-md border border-surface2 bg-surface2 px-2 py-1 text-sm"
+          >
+            <option value="">No tribe</option>
+            {tribes.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.name}
+              </option>
+            ))}
+          </select>
+          {survivor.current_tribe && (
+            <span
+              className="h-3 w-3 rounded-full border border-surface2"
+              style={{ backgroundColor: survivor.current_tribe.color }}
+              title={survivor.current_tribe.name}
+            />
+          )}
+        </div>
+      )}
 
       <div className="mt-3">
         <p className="text-xs text-muted">Advantages</p>
@@ -587,7 +592,10 @@ function AssignTribesTab() {
 
   if (loading) return <p className="text-sm text-muted">Loading…</p>;
 
-  const unassigned = survivors.filter((s) => !s.current_tribe_id);
+  // The host (e.g. Jeff Probst) is never tribe-assigned — exclude him
+  // entirely rather than showing him stuck in "Unassigned."
+  const tribeEligible = survivors.filter((s) => !s.is_host);
+  const unassigned = tribeEligible.filter((s) => !s.current_tribe_id);
 
   return (
     <div>
@@ -635,7 +643,7 @@ function AssignTribesTab() {
           <TribeColumn
             key={t.id}
             tribe={t}
-            survivors={survivors.filter((s) => s.current_tribe_id === t.id)}
+            survivors={tribeEligible.filter((s) => s.current_tribe_id === t.id)}
             isDragOver={dragOverKey === t.id}
             onDragOver={(e) => {
               e.preventDefault();

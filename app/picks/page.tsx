@@ -311,16 +311,21 @@ export default function PicksPage() {
                   <div>
                     <p className="font-display text-lg">
                       {s.name}
+                      {s.is_host && (
+                        <span className="ml-2 text-xs font-normal text-gold">Host</span>
+                      )}
                       {s.eliminated && (
                         <span className="ml-2 text-xs font-normal text-rust">Eliminated</span>
                       )}
                     </p>
-                    <p className="text-xs text-muted">
-                      {s.current_tribe?.name || "No tribe"}
-                      {s.original_tribe && s.original_tribe !== s.current_tribe?.name
-                        ? ` (orig. ${s.original_tribe})`
-                        : ""}
-                    </p>
+                    {!s.is_host && (
+                      <p className="text-xs text-muted">
+                        {s.current_tribe?.name || "No tribe"}
+                        {s.original_tribe && s.original_tribe !== s.current_tribe?.name
+                          ? ` (orig. ${s.original_tribe})`
+                          : ""}
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -351,9 +356,11 @@ export default function PicksPage() {
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
                 <span>Points: {stats?.total ?? 0}</span>
                 <span>Avg: {stats ? stats.average.toFixed(1) : "0.0"}</span>
-                <span className={s.has_vote ? "text-muted" : "text-rust"}>
-                  {s.has_vote ? "Can vote" : "No vote"}
-                </span>
+                {!s.is_host && (
+                  <span className={s.has_vote ? "text-muted" : "text-rust"}>
+                    {s.has_vote ? "Can vote" : "No vote"}
+                  </span>
+                )}
               </div>
 
               <div className="mt-2 flex flex-wrap gap-1.5">
