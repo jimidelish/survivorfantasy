@@ -302,7 +302,7 @@ function UpdateSurvivorsTab() {
 
   async function updateSurvivor(
     id: string,
-    update: { eliminated?: boolean; current_tribe_id?: string | null }
+    update: { eliminated?: boolean; has_vote?: boolean; current_tribe_id?: string | null }
   ) {
     await fetch(`/api/admin/survivors/${id}`, {
       method: "PATCH",
@@ -371,7 +371,11 @@ function SurvivorRow({
 }: {
   survivor: Survivor;
   tribes: Tribe[];
-  onUpdate: (update: { eliminated?: boolean; current_tribe_id?: string | null }) => void;
+  onUpdate: (update: {
+    eliminated?: boolean;
+    has_vote?: boolean;
+    current_tribe_id?: string | null;
+  }) => void;
   onAddAdvantage: (type: string) => void;
   onSetAdvantageStatus: (advantageId: string, status: "active" | "used") => void;
   onRemoveAdvantage: (advantageId: string) => void;
@@ -397,6 +401,14 @@ function SurvivorRow({
               onChange={(e) => onUpdate({ eliminated: e.target.checked })}
             />
             Eliminated
+          </label>
+          <label className="flex items-center gap-1.5 text-sm text-muted">
+            <input
+              type="checkbox"
+              checked={survivor.has_vote}
+              onChange={(e) => onUpdate({ has_vote: e.target.checked })}
+            />
+            Can vote
           </label>
         </div>
       </div>

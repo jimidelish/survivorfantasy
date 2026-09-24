@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import supabaseAdmin from "@/lib/supabaseAdmin";
 
 // Partial update for a single survivor from Admin > Update Survivors and
-// Admin > Assign Tribes. Only eliminated / current_tribe_id are editable
-// here — name/photo/original_tribe stay CSV-managed (Season Setup), and
-// Shot in the Dark is granted/used like any other advantage now, via
-// /api/admin/advantages.
+// Admin > Assign Tribes. eliminated / has_vote / current_tribe_id are
+// editable here — name/photo/original_tribe stay CSV-managed (Season
+// Setup), and Shot in the Dark is granted/used like any other advantage
+// now, via /api/admin/advantages. has_vote is also changed automatically
+// by the Beware Advantage and "Loses their vote" triggers (see
+// lib/triggerEngine.ts) — this is the manual override for correcting it
+// directly (e.g. a twist with no matching "regain vote" trigger).
 export const dynamic = "force-dynamic";
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -13,6 +16,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   const update: Record<string, unknown> = {};
   if (typeof body.eliminated === "boolean") update.eliminated = body.eliminated;
+  if (typeof body.has_vote === "boolean") update.has_vote = body.has_vote;
   if (typeof body.current_tribe_id === "string" || body.current_tribe_id === null) {
     update.current_tribe_id = body.current_tribe_id || null;
   }
