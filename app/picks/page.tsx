@@ -414,10 +414,20 @@ export default function PicksPage() {
                     </p>
                     {!s.is_host && (
                       <p className="text-xs text-muted">
-                        {s.current_tribe?.name || "No tribe"}
-                        {s.original_tribe && s.original_tribe !== s.current_tribe?.name
-                          ? ` (orig. ${s.original_tribe})`
-                          : ""}
+                        {s.tribe_history && s.tribe_history.length > 0 ? (
+                          s.tribe_history.map((h, i, arr) => (
+                            <span key={h.id}>
+                              {i > 0 && <span className="mx-1 text-muted/40">→</span>}
+                              <span
+                                className={i < arr.length - 1 ? "text-muted/50 line-through" : ""}
+                              >
+                                {h.tribe_name}
+                              </span>
+                            </span>
+                          ))
+                        ) : (
+                          "No tribe"
+                        )}
                       </p>
                     )}
                   </div>

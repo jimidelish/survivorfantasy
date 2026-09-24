@@ -6,7 +6,6 @@ import { parseSurvivorsFilename } from "@/lib/csvFilenames";
 interface CsvRow {
   name?: string;
   photo_url?: string;
-  original_tribe?: string;
 }
 
 // Body: { filename: string, csv: string, confirm: boolean }
@@ -56,13 +55,12 @@ export async function POST(req: NextRequest) {
     .map((r) => ({
       name: r.name?.trim(),
       photo_url: r.photo_url?.trim() || null,
-      original_tribe: r.original_tribe?.trim() || null,
     }))
     .filter((r) => r.name);
 
   if (rows.length === 0) {
     return NextResponse.json(
-      { error: "No valid rows found. Expected headers: name, photo_url, original_tribe." },
+      { error: "No valid rows found. Expected headers: name, photo_url." },
       { status: 400 }
     );
   }
@@ -98,9 +96,9 @@ export async function POST(req: NextRequest) {
     season_id: season!.id,
     name: r.name!,
     photo_url: r.photo_url,
-    original_tribe: r.original_tribe,
     // current_tribe_id starts unset (null) — assign real tribes afterward
-    // via Admin > Assign Tribes, once that season's tribes exist.
+    // via Admin > Assign Tribes, once that season's tribes exist. That
+    // first assignment becomes the survivor's first tribe-history entry.
   }));
 
   const { data: inserted, error: insertError } = await supabaseAdmin

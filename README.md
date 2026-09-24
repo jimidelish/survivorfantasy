@@ -89,7 +89,7 @@ targets comes from the filename, not the dropdown. Templates are in
 [`templates/`](./templates). Headers:
 
 ```
-name,photo_url,original_tribe
+name,photo_url
 ```
 
 The app parses the season number straight out of the filename. If that
@@ -125,6 +125,12 @@ swap, or the merge — all just "tribes," no special case for any of them),
 then drag survivor chips between tribe columns to assign them. Deleting a
 tribe unassigns its members back to "No tribe" rather than blocking the
 delete or touching the survivors themselves.
+
+Every real assignment — here or from the tribe dropdown in Update
+Survivors — appends to that survivor's tribe history, shown on My Picks.
+Unassigning to "No tribe" isn't recorded (nothing meaningful to show
+struck through), and re-"assigning" someone to the tribe they're already
+on doesn't create a duplicate entry.
 
 ---
 
@@ -188,9 +194,12 @@ Scores and Home actually display as real standings.
 - **My Picks (`/picks`)** — pick an episode, see your multiplier budget (with
   an explanation if you're getting a trailing-leader bonus), and assign
   multipliers to survivors. Each survivor card doubles as the "who's still
-  in" reference: current tribe, season points, per-episode average, and any
+  in" reference: tribe history, season points, per-episode average, and any
   active advantages (Shot in the Dark included) as colored tags, right next
-  to the stepper. The host (e.g. Jeff Probst) is pickable too, tagged
+  to the stepper. Tribe history shows every tribe a survivor has been
+  assigned to, in order — past ones struck through, only the current one
+  not, updating automatically every time an admin reassigns them (see
+  Assign Tribes below). The host (e.g. Jeff Probst) is pickable too, tagged
   "Host," and sorted right after the active cast and before eliminated
   survivors — with no tribe, elimination, or vote status, since none of
   that applies to him.

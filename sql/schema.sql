@@ -44,9 +44,9 @@ create table if not exists users (
 -- Admin > Assign Tribes as swaps and the merge happen through the season.
 -- Deleting a tribe just unassigns its members (current_tribe_id -> null,
 -- rendered as "no tribe" / default styling) rather than blocking the
--- delete or cascading. `original_tribe` on survivors is NOT a reference
--- to this table — it's a plain text snapshot of the starting tribe from
--- the season-setup CSV and never changes after import.
+-- delete or cascading. See SURVIVOR_TRIBE_HISTORY below for how a
+-- survivor's past tribes are tracked (name/color snapshotted there, so a
+-- rename/recolor/delete here never rewrites their history).
 -- ============================================================
 create table if not exists tribes (
   id uuid primary key default gen_random_uuid(),
@@ -68,7 +68,6 @@ create table if not exists survivors (
   season_id uuid not null references seasons(id) on delete cascade,
   name text not null,
   photo_url text,
-  original_tribe text,
   current_tribe_id uuid references tribes(id) on delete set null,
   eliminated boolean not null default false,
   has_vote boolean not null default true, -- false = hit with a "no vote" twist/punishment
@@ -105,6 +104,26 @@ create table if not exists survivor_advantages (
 );
 
 create index if not exists idx_survivor_advantages_survivor on survivor_advantages(survivor_id);
+
+-- Every tribe a survivor has ever been assigned to, in order — appended to
+-- automatically (app/api/admin/survivors/[id]/route.ts) whenever
+-- current_tribe_id changes to a new, real tribe (not on unassignment to
+-- "no tribe," and not a duplicate row if "changed" to the same tribe it's
+-- already on). tribe_name/tribe_color are a SNAPSHOT at assignment time,
+-- not a live reference to `tribes` — same philosophy as events.point_value
+-- — so a later rename/recolor/delete of that tribe never rewrites what a
+-- survivor's history actually looked like. My Picks renders these in
+-- order, all but the last struck through.
+create table if not exists survivor_tribe_history (
+  id uuid primary key default gen_random_uuid(),
+  survivor_id uuid not null references survivors(id) on delete cascade,
+  tribe_name text not null,
+  tribe_color text not null,
+  assigned_at timestamptz not null default now()
+);
+
+create index if not exists idx_survivor_tribe_history_survivor
+  on survivor_tribe_history(survivor_id, assigned_at);
 
 -- ============================================================
 -- EPISODES

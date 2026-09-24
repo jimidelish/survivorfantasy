@@ -56,18 +56,25 @@ export interface Tribe {
   color: string;
 }
 
+export interface TribeHistoryEntry {
+  id: string;
+  tribe_name: string;
+  tribe_color: string;
+  assigned_at: string;
+}
+
 export interface Survivor {
   id: string;
   season_id: string;
   name: string;
   photo_url: string | null;
-  original_tribe: string | null;
   current_tribe_id: string | null;
   current_tribe: Tribe | null;
   eliminated: boolean;
   has_vote: boolean;
   is_host: boolean;
   advantages?: SurvivorAdvantage[];
+  tribe_history?: TribeHistoryEntry[];
 }
 
 export interface Episode {

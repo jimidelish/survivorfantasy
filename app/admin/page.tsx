@@ -93,7 +93,7 @@ function SeasonSetupTab() {
       <div className="mt-6">
         <CsvUpload
           title="Survivors"
-          description="Headers: name, photo_url, original_tribe"
+          description="Headers: name, photo_url"
           expectedPattern="survivors_s{season}.csv — e.g. survivors_s51.csv"
           confirmLabel="I understand this deletes the existing roster (and any picks/events tied to it) for this season, and replaces it with this file."
           onUpload={async (filename, csv, confirm) => {

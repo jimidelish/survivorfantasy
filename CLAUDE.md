@@ -111,9 +111,20 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
 - **Tribes** are a season-scoped table (`tribes`: name + color), not free
   text. `survivors.current_tribe_id` references it (`on delete set null`,
   so deleting a tribe just unassigns its members rather than blocking or
-  cascading). `survivors.original_tribe` stays plain text — it's a one-time
-  snapshot from the Season Setup CSV and is never tribe-referenced. A null
-  `current_tribe_id` renders as "No tribe" with no color styling.
+  cascading). A null `current_tribe_id` renders as "No tribe" with no color
+  styling.
+- **Tribe history** (`survivor_tribe_history`, replacing the old
+  `survivors.original_tribe` free-text snapshot) records every real tribe
+  assignment a survivor has ever had, in order — appended automatically by
+  `PATCH /api/admin/survivors/[id]` (the single code path both Update
+  Survivors' dropdown and Assign Tribes' drag-and-drop go through) whenever
+  `current_tribe_id` changes to a *new, non-null* tribe. Unassigning to
+  null, and a no-op "change" to the tribe they're already on, don't create
+  an entry. `tribe_name`/`tribe_color` are **snapshotted** at assignment
+  time (same philosophy as `events.point_value`), not a live FK to
+  `tribes` — a later rename/recolor/delete of that tribe never rewrites a
+  survivor's past. My Picks renders the full chain, all but the last
+  struck through.
 - **The host** (`survivors.is_host`, e.g. Jeff Probst) is a real
   `survivors` row — pickable on My Picks and scored per-season through the
   exact same picks/events machinery as any cast member — but never

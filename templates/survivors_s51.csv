@@ -1,4 +1,4 @@
-name,photo_url,original_tribe
-Example Survivor One,https://example.com/photos/survivor-one.jpg,Tribe A
-Example Survivor Two,https://example.com/photos/survivor-two.jpg,Tribe A
-Example Survivor Three,https://example.com/photos/survivor-three.jpg,Tribe B
+name,photo_url
+Example Survivor One,https://example.com/photos/survivor-one.jpg
+Example Survivor Two,https://example.com/photos/survivor-two.jpg
+Example Survivor Three,https://example.com/photos/survivor-three.jpg
