@@ -59,22 +59,34 @@ export default function StackedPointsChart({
     return row;
   });
 
+  // Horizontal bars need a row's worth of height per entry rather than a
+  // fixed height — with ~20 survivors, a fixed h-96 would cram them
+  // illegibly.
+  const chartHeight = Math.max(320, data.length * 36 + 60);
+
   return (
-    <div className="mt-6 h-96 w-full">
+    <div className="mt-6 w-full" style={{ height: chartHeight }}>
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#2A362E" vertical={false} />
+        <BarChart
+          data={data}
+          layout="vertical"
+          margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+        >
+          <CartesianGrid strokeDasharray="3 3" stroke="#2A362E" horizontal={false} />
           <XAxis
-            dataKey="name"
+            type="number"
             tick={{ fill: "#8FA294", fontSize: 12 }}
             axisLine={{ stroke: "#2A362E" }}
             tickLine={false}
-            interval={0}
-            angle={-30}
-            textAnchor="end"
-            height={70}
           />
-          <YAxis tick={{ fill: "#8FA294", fontSize: 12 }} axisLine={{ stroke: "#2A362E" }} tickLine={false} />
+          <YAxis
+            dataKey="name"
+            type="category"
+            width={110}
+            tick={{ fill: "#8FA294", fontSize: 12 }}
+            axisLine={{ stroke: "#2A362E" }}
+            tickLine={false}
+          />
           <Tooltip
             contentStyle={{
               backgroundColor: "#212B24",
@@ -92,7 +104,7 @@ export default function StackedPointsChart({
               name={`Ep ${ep.number}`}
               stackId="a"
               fill={PALETTE[i % PALETTE.length]}
-              radius={i === episodes.length - 1 ? [3, 3, 0, 0] : undefined}
+              radius={i === episodes.length - 1 ? [0, 3, 3, 0] : undefined}
             />
           ))}
         </BarChart>
