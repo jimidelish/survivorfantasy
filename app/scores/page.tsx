@@ -76,7 +76,7 @@ export default function ScoresPage() {
         <>
           <StackedPointsChart
             episodes={data.episodes}
-            series={data.series}
+            series={totals}
             emptyLabel="No episodes logged yet this season."
           />
 
