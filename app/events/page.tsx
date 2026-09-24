@@ -191,9 +191,19 @@ export default function EventsPage() {
     refreshSurvivors();
   }
 
+  function refreshEvents() {
+    if (!episodeId) return;
+    fetch(`/api/events?episode_id=${episodeId}`)
+      .then((r) => r.json())
+      .then(setEvents);
+  }
+
   async function undoEvent(id: string) {
     await fetch(`/api/events?id=${id}`, { method: "DELETE" });
-    setEvents((prev) => prev.filter((ev) => ev.id !== id));
+    // Refetch rather than locally filtering out just this id — undoing a
+    // trigger event (e.g. an advantage transfer) can cascade-delete a
+    // second event server-side, which a local filter wouldn't know about.
+    refreshEvents();
     refreshSurvivors();
   }
 
