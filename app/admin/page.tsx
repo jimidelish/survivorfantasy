@@ -655,6 +655,13 @@ function AssignTribesTab() {
   const [newTribeColor, setNewTribeColor] = useState("#C9A24C");
   const [dragOverKey, setDragOverKey] = useState<string | null>(null);
 
+  // Dragging only stages a change locally — nothing is saved (and no
+  // tribe-history entry created) until "Save changes" is confirmed, so
+  // trial-and-error dragging doesn't clutter every touched survivor's
+  // history with intermediate moves.
+  const [pendingAssignments, setPendingAssignments] = useState<Record<string, string | null>>({});
+  const [savingAssignments, setSavingAssignments] = useState(false);
+
   function refresh() {
     Promise.all([
       fetch("/api/survivors").then((r) => r.json()),
@@ -703,20 +710,55 @@ function AssignTribesTab() {
     refresh();
   }
 
-  async function assignSurvivor(survivorId: string, tribeId: string | null) {
-    await fetch(`/api/admin/survivors/${survivorId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ current_tribe_id: tribeId }),
+  function stageAssignment(survivorId: string, tribeId: string | null) {
+    const survivor = survivors.find((s) => s.id === survivorId);
+    setPendingAssignments((prev) => {
+      const next = { ...prev };
+      // If this matches their last-saved tribe, it's not actually a
+      // pending change (e.g. dragged away and back) — drop it rather than
+      // counting/showing a no-op change.
+      if (survivor && tribeId === survivor.current_tribe_id) {
+        delete next[survivorId];
+      } else {
+        next[survivorId] = tribeId;
+      }
+      return next;
     });
-    refresh();
   }
 
   function handleDrop(e: React.DragEvent, tribeId: string | null) {
     e.preventDefault();
     setDragOverKey(null);
     const survivorId = e.dataTransfer.getData("text/plain");
-    if (survivorId) assignSurvivor(survivorId, tribeId);
+    if (survivorId) stageAssignment(survivorId, tribeId);
+  }
+
+  function discardAssignments() {
+    setPendingAssignments({});
+  }
+
+  async function saveAssignments() {
+    const entries = Object.entries(pendingAssignments);
+    if (entries.length === 0) return;
+    const confirmed = window.confirm(
+      `Save ${entries.length} tribe assignment${entries.length > 1 ? "s" : ""}? This adds a new ` +
+        `tribe-history entry for each survivor whose tribe actually changed.`
+    );
+    if (!confirmed) return;
+
+    setSavingAssignments(true);
+    await Promise.all(
+      entries.map(([survivorId, tribeId]) =>
+        fetch(`/api/admin/survivors/${survivorId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ current_tribe_id: tribeId }),
+        })
+      )
+    );
+    setSavingAssignments(false);
+    setPendingAssignments({});
+    refresh();
   }
 
   if (loading) return <p className="text-sm text-muted">Loading…</p>;
@@ -724,15 +766,53 @@ function AssignTribesTab() {
   // The host (e.g. Jeff Probst) is never tribe-assigned — exclude him
   // entirely rather than showing him stuck in "Unassigned."
   const tribeEligible = survivors.filter((s) => !s.is_host);
-  const unassigned = tribeEligible.filter((s) => !s.current_tribe_id);
+  // Reflects the staged (not-yet-saved) state, so a drag visibly moves a
+  // chip between columns immediately even though nothing's persisted yet.
+  const effectiveTribeId = (s: Survivor) =>
+    s.id in pendingAssignments ? pendingAssignments[s.id] : s.current_tribe_id;
+  const unassigned = tribeEligible.filter((s) => !effectiveTribeId(s));
+  const pendingSurvivorIds = new Set(Object.keys(pendingAssignments));
+  const pendingCount = pendingSurvivorIds.size;
 
   return (
     <div>
       <p className="text-sm text-muted">
         Add tribes for this season — starting tribes, swap tribes, or the merge — then drag
         survivors between columns to assign them. Deleting a tribe unassigns its members back to
-        &quot;No tribe&quot; rather than removing them from the season.
+        &quot;No tribe&quot; rather than removing them from the season. Dragging only stages a
+        change — nothing saves (or gets added to anyone&apos;s tribe history) until you click Save
+        changes.
       </p>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <span className={`text-xs ${pendingCount > 0 ? "text-gold" : "text-muted"}`}>
+          {savingAssignments
+            ? "Saving…"
+            : pendingCount > 0
+            ? `${pendingCount} unsaved assignment${pendingCount > 1 ? "s" : ""}`
+            : "No unsaved assignments"}
+        </span>
+        {pendingCount > 0 && (
+          <>
+            <button
+              type="button"
+              onClick={saveAssignments}
+              disabled={savingAssignments}
+              className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90 disabled:opacity-40"
+            >
+              {savingAssignments ? "Saving…" : "Save changes"}
+            </button>
+            <button
+              type="button"
+              onClick={discardAssignments}
+              disabled={savingAssignments}
+              className="text-xs text-muted hover:text-rust disabled:opacity-40"
+            >
+              Discard
+            </button>
+          </>
+        )}
+      </div>
 
       <form onSubmit={addTribe} className="mt-6 flex flex-wrap items-center gap-2">
         <input
@@ -760,6 +840,7 @@ function AssignTribesTab() {
         <TribeColumn
           tribe={null}
           survivors={unassigned}
+          pendingSurvivorIds={pendingSurvivorIds}
           isDragOver={dragOverKey === "unassigned"}
           onDragOver={(e) => {
             e.preventDefault();
@@ -772,7 +853,8 @@ function AssignTribesTab() {
           <TribeColumn
             key={t.id}
             tribe={t}
-            survivors={tribeEligible.filter((s) => s.current_tribe_id === t.id)}
+            survivors={tribeEligible.filter((s) => effectiveTribeId(s) === t.id)}
+            pendingSurvivorIds={pendingSurvivorIds}
             isDragOver={dragOverKey === t.id}
             onDragOver={(e) => {
               e.preventDefault();
@@ -793,6 +875,7 @@ function AssignTribesTab() {
 function TribeColumn({
   tribe,
   survivors,
+  pendingSurvivorIds,
   isDragOver,
   onDragOver,
   onDragLeave,
@@ -803,6 +886,7 @@ function TribeColumn({
 }: {
   tribe: Tribe | null;
   survivors: Survivor[];
+  pendingSurvivorIds: Set<string>;
   isDragOver: boolean;
   onDragOver: (e: React.DragEvent) => void;
   onDragLeave: () => void;
@@ -857,7 +941,7 @@ function TribeColumn({
 
       <div className="mt-3 min-h-[3rem] space-y-1.5">
         {survivors.map((s) => (
-          <SurvivorChip key={s.id} survivor={s} />
+          <SurvivorChip key={s.id} survivor={s} isPending={pendingSurvivorIds.has(s.id)} />
         ))}
         {survivors.length === 0 && <p className="text-xs text-muted">Drag survivors here</p>}
       </div>
@@ -865,7 +949,7 @@ function TribeColumn({
   );
 }
 
-function SurvivorChip({ survivor }: { survivor: Survivor }) {
+function SurvivorChip({ survivor, isPending }: { survivor: Survivor; isPending: boolean }) {
   return (
     <div
       draggable
@@ -873,12 +957,13 @@ function SurvivorChip({ survivor }: { survivor: Survivor }) {
         e.dataTransfer.setData("text/plain", survivor.id);
         e.dataTransfer.effectAllowed = "move";
       }}
-      className={`cursor-grab rounded-md border border-surface2 bg-surface2 px-3 py-1.5 text-sm active:cursor-grabbing ${
-        survivor.eliminated ? "opacity-50" : ""
-      }`}
+      className={`cursor-grab rounded-md border px-3 py-1.5 text-sm active:cursor-grabbing ${
+        isPending ? "border-gold bg-gold/10" : "border-surface2 bg-surface2"
+      } ${survivor.eliminated ? "opacity-50" : ""}`}
     >
       {survivor.name}
       {survivor.eliminated && <span className="ml-2 text-[10px] text-rust">Eliminated</span>}
+      {isPending && <span className="ml-2 text-[10px] text-gold">unsaved</span>}
     </div>
   );
 }

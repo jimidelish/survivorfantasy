@@ -130,6 +130,14 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   that route refuses to delete the *most recent* entry for a survivor,
   since My Picks' "current tribe" display is just "last entry in history,"
   and that has to stay in sync with `survivors.current_tribe_id`.
+  **Assign Tribes' drag-and-drop is staged, not immediate** — dragging only
+  updates local component state (`pendingAssignments` in
+  `app/admin/page.tsx`); the actual `PATCH` calls (and therefore any
+  history entries) only fire when "Save changes" is confirmed, batching
+  every staged move in one `Promise.all`. This exists specifically so
+  trial-and-error dragging doesn't spam history with intermediate moves.
+  Update Survivors' tribe dropdown is unaffected — it still saves
+  immediately, same as everything else on that tab.
 - **The host** (`survivors.is_host`, e.g. Jeff Probst) is a real
   `survivors` row — pickable on My Picks and scored per-season through the
   exact same picks/events machinery as any cast member — but never

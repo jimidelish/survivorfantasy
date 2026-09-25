@@ -132,11 +132,20 @@ then drag survivor chips between tribe columns to assign them. Deleting a
 tribe unassigns its members back to "No tribe" rather than blocking the
 delete or touching the survivors themselves.
 
-Every real assignment — here or from the tribe dropdown in Update
-Survivors — appends to that survivor's tribe history, shown on My Picks.
-Unassigning to "No tribe" isn't recorded (nothing meaningful to show
-struck through), and re-"assigning" someone to the tribe they're already
-on doesn't create a duplicate entry.
+**Dragging only stages a change** — a moved chip shows an "unsaved" tag
+and a gold border, and nothing is saved (or added to anyone's tribe
+history) until you click **Save changes**, which confirms the count before
+committing them all at once. This keeps trial-and-error dragging from
+cluttering history with intermediate moves. **Discard** clears all staged
+moves without saving. Switching tabs before saving loses any staged
+drags, same as a page refresh would.
+
+Every real assignment — here, or from the tribe dropdown in Update
+Survivors (which saves immediately, unlike dragging here) — appends to
+that survivor's tribe history, shown on My Picks. Unassigning to "No
+tribe" isn't recorded (nothing meaningful to show struck through), and
+re-"assigning" someone to the tribe they're already on doesn't create a
+duplicate entry.
 
 ---
 
