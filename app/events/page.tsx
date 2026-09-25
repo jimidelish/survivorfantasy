@@ -251,6 +251,7 @@ export default function EventsPage() {
             <option key={ep.id} value={ep.id}>
               Episode {ep.number}
               {ep.title ? ` — ${ep.title}` : ""}
+              {ep.is_current ? " (current)" : ""}
             </option>
           ))}
         </select>

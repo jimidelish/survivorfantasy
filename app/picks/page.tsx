@@ -274,6 +274,7 @@ export default function PicksPage() {
             <option key={ep.id} value={ep.id}>
               Episode {ep.number}
               {ep.title ? ` — ${ep.title}` : ""}
+              {ep.is_current ? " (current)" : ""}
               {ep.locked ? " (locked)" : ""}
             </option>
           ))}

@@ -11,7 +11,7 @@ function NavLink({ href, label }: { href: string; label: string }) {
   return (
     <Link
       href={href}
-      className={`text-sm tracking-wide transition-colors ${
+      className={`text-xs tracking-wide transition-colors sm:text-sm ${
         active ? "text-ember" : "text-parchment/80 hover:text-parchment"
       }`}
     >
@@ -52,11 +52,11 @@ export default function NavBar() {
 
   return (
     <header className="border-b border-surface2 bg-surface/60">
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-6 py-4">
-        <Link href="/" className="font-display text-xl font-semibold text-parchment">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+        <Link href="/" className="font-display text-lg font-semibold text-parchment sm:text-xl">
           Survivor Fantasy Draft{season ? ` — Season ${season.number}` : ""}
         </Link>
-        <nav className="flex items-center gap-6">
+        <nav className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:gap-6">
           <NavLink href="/" label="Home" />
           <NavLink href="/picks" label="My Picks" />
           <NavLink href="/scores" label="Scores" />

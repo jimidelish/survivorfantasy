@@ -5,6 +5,9 @@
 body {
   background-color: #161f1a;
   color: #ede6d2;
+  /* Safety net against any element (wide tables, long unbroken strings)
+     forcing a horizontal scrollbar on narrow/mobile viewports. */
+  overflow-x: hidden;
 }
 
 /* A thin gold rule used in place of card borders/shadows throughout the app */
