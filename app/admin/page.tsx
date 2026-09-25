@@ -784,7 +784,29 @@ function AssignTribesTab() {
         changes.
       </p>
 
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      <form onSubmit={addTribe} className="mt-6 flex flex-wrap items-center gap-2">
+        <input
+          value={newTribeName}
+          onChange={(e) => setNewTribeName(e.target.value)}
+          placeholder="Tribe name"
+          className="rounded-md border border-surface2 bg-surface px-3 py-2 text-sm"
+        />
+        <input
+          type="color"
+          value={newTribeColor}
+          onChange={(e) => setNewTribeColor(e.target.value)}
+          className="h-9 w-12 cursor-pointer rounded-md border border-surface2 bg-surface"
+          title="Tribe color"
+        />
+        <button
+          type="submit"
+          className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90"
+        >
+          Add tribe
+        </button>
+      </form>
+
+      <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
         <span className={`text-xs ${pendingCount > 0 ? "text-gold" : "text-muted"}`}>
           {savingAssignments
             ? "Saving…"
@@ -814,29 +836,7 @@ function AssignTribesTab() {
         )}
       </div>
 
-      <form onSubmit={addTribe} className="mt-6 flex flex-wrap items-center gap-2">
-        <input
-          value={newTribeName}
-          onChange={(e) => setNewTribeName(e.target.value)}
-          placeholder="Tribe name"
-          className="rounded-md border border-surface2 bg-surface px-3 py-2 text-sm"
-        />
-        <input
-          type="color"
-          value={newTribeColor}
-          onChange={(e) => setNewTribeColor(e.target.value)}
-          className="h-9 w-12 cursor-pointer rounded-md border border-surface2 bg-surface"
-          title="Tribe color"
-        />
-        <button
-          type="submit"
-          className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90"
-        >
-          Add tribe
-        </button>
-      </form>
-
-      <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <TribeColumn
           tribe={null}
           survivors={unassigned}
