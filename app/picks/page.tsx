@@ -432,28 +432,35 @@ export default function PicksPage() {
                         </p>
                       )}
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => adjust(s.id, -1)}
-                        disabled={s.eliminated || multiplier === 0 || currentEpisode?.locked}
-                        className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
-                        aria-label={`Decrease ${s.name} multiplier`}
-                      >
-                        −
-                      </button>
-                      <span className="w-6 text-center font-display text-ember">
-                        {multiplier > 0 ? `${multiplier}×` : "—"}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => adjust(s.id, 1)}
-                        disabled={s.eliminated || !canIncrease || currentEpisode?.locked}
-                        className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
-                        aria-label={`Increase ${s.name} multiplier`}
-                      >
-                        +
-                      </button>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => adjust(s.id, -1)}
+                          disabled={s.eliminated || multiplier === 0 || currentEpisode?.locked}
+                          className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
+                          aria-label={`Decrease ${s.name} multiplier`}
+                        >
+                          −
+                        </button>
+                        <span className="w-6 text-center font-display text-ember">
+                          {multiplier > 0 ? `${multiplier}×` : "—"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => adjust(s.id, 1)}
+                          disabled={s.eliminated || !canIncrease || currentEpisode?.locked}
+                          className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
+                          aria-label={`Increase ${s.name} multiplier`}
+                        >
+                          +
+                        </button>
+                      </div>
+                      {s.id === winnerPickSurvivorId && (
+                        <span className="whitespace-nowrap text-[10px] text-gold">
+                          Winner pick! (+1)
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -467,24 +474,26 @@ export default function PicksPage() {
                     )}
                   </div>
 
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {activeAdvantages.length > 0 ? (
-                      activeAdvantages.map((a) => (
-                        <span
-                          key={a.id}
-                          className="rounded-full border px-2 py-0.5 text-[11px]"
-                          style={{
-                            borderColor: `${ADVANTAGE_COLORS[a.type]}66`,
-                            color: ADVANTAGE_COLORS[a.type],
-                          }}
-                        >
-                          {a.type}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-[11px] text-muted">No advantages held</span>
-                    )}
-                  </div>
+                  {!s.is_host && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {activeAdvantages.length > 0 ? (
+                        activeAdvantages.map((a) => (
+                          <span
+                            key={a.id}
+                            className="rounded-full border px-2 py-0.5 text-[11px]"
+                            style={{
+                              borderColor: `${ADVANTAGE_COLORS[a.type]}66`,
+                              color: ADVANTAGE_COLORS[a.type],
+                            }}
+                          >
+                            {a.type}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-[11px] text-muted">No advantages held</span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

@@ -128,6 +128,10 @@ function SeasonControlTab() {
   const [picksGroups, setPicksGroups] = useState<UserPicksGroup[]>([]);
   const [picksLoading, setPicksLoading] = useState(false);
 
+  const [winnerPickStats, setWinnerPickStats] = useState<{ total: number; picked: number } | null>(
+    null
+  );
+
   useEffect(() => {
     fetch("/api/seasons")
       .then((r) => r.json())
@@ -137,6 +141,13 @@ function SeasonControlTab() {
         else setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (!selectedSeasonId) return;
+    fetch(`/api/admin/winner-picks-count?season_id=${selectedSeasonId}`)
+      .then((r) => r.json())
+      .then(setWinnerPickStats);
+  }, [selectedSeasonId]);
 
   function refreshEpisodes() {
     if (!selectedSeasonId) return;
@@ -269,6 +280,11 @@ function SeasonControlTab() {
               : "Players can still set or change their winner pick for this season."}
           </span>
         </div>
+      )}
+      {winnerPickStats && (
+        <p className="mt-2 text-xs text-gold">
+          {winnerPickStats.picked}/{winnerPickStats.total} winner picks locked in!
+        </p>
       )}
 
       <form onSubmit={addEpisode} className="mt-6 flex flex-wrap gap-2">
