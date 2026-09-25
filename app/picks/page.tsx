@@ -399,91 +399,93 @@ export default function PicksPage() {
                   : undefined
               }
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <SurvivorAvatar name={s.name} photoUrl={s.photo_url} />
-                  <div>
-                    <p className="font-display text-lg">
-                      {s.name}
-                      {s.is_host && (
-                        <span className="ml-2 text-xs font-normal text-gold">Host</span>
-                      )}
-                      {s.eliminated && (
-                        <span className="ml-2 text-xs font-normal text-rust">Eliminated</span>
-                      )}
-                    </p>
-                    {!s.is_host && (
-                      <p className="text-xs text-muted">
-                        {s.tribe_history && s.tribe_history.length > 0 ? (
-                          s.tribe_history.map((h, i, arr) => (
-                            <span key={h.id}>
-                              {i > 0 && <span className="mx-1 text-muted/40">→</span>}
-                              <span
-                                className={i < arr.length - 1 ? "text-muted/50 line-through" : ""}
-                              >
-                                {h.tribe_name}
-                              </span>
-                            </span>
-                          ))
-                        ) : (
-                          "No tribe"
+              <div className="flex items-start gap-4">
+                <SurvivorAvatar name={s.name} photoUrl={s.photo_url} className="h-20 w-20 shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-display text-lg">
+                        {s.name}
+                        {s.is_host && (
+                          <span className="ml-2 text-xs font-normal text-gold">Host</span>
+                        )}
+                        {s.eliminated && (
+                          <span className="ml-2 text-xs font-normal text-rust">Eliminated</span>
                         )}
                       </p>
+                      {!s.is_host && (
+                        <p className="text-xs text-muted">
+                          {s.tribe_history && s.tribe_history.length > 0 ? (
+                            s.tribe_history.map((h, i, arr) => (
+                              <span key={h.id}>
+                                {i > 0 && <span className="mx-1 text-muted/40">→</span>}
+                                <span
+                                  className={i < arr.length - 1 ? "text-muted/50 line-through" : ""}
+                                >
+                                  {h.tribe_name}
+                                </span>
+                              </span>
+                            ))
+                          ) : (
+                            "No tribe"
+                          )}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => adjust(s.id, -1)}
+                        disabled={s.eliminated || multiplier === 0 || currentEpisode?.locked}
+                        className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
+                        aria-label={`Decrease ${s.name} multiplier`}
+                      >
+                        −
+                      </button>
+                      <span className="w-6 text-center font-display text-ember">
+                        {multiplier > 0 ? `${multiplier}×` : "—"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => adjust(s.id, 1)}
+                        disabled={s.eliminated || !canIncrease || currentEpisode?.locked}
+                        className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
+                        aria-label={`Increase ${s.name} multiplier`}
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
+                    <span>Points: {stats?.total ?? 0}</span>
+                    <span>Avg: {stats ? stats.average.toFixed(1) : "0.0"}</span>
+                    {!s.is_host && (
+                      <span className={s.has_vote ? "text-muted" : "text-rust"}>
+                        {s.has_vote ? "Can vote" : "No vote"}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {activeAdvantages.length > 0 ? (
+                      activeAdvantages.map((a) => (
+                        <span
+                          key={a.id}
+                          className="rounded-full border px-2 py-0.5 text-[11px]"
+                          style={{
+                            borderColor: `${ADVANTAGE_COLORS[a.type]}66`,
+                            color: ADVANTAGE_COLORS[a.type],
+                          }}
+                        >
+                          {a.type}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[11px] text-muted">No advantages held</span>
                     )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => adjust(s.id, -1)}
-                    disabled={s.eliminated || multiplier === 0 || currentEpisode?.locked}
-                    className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
-                    aria-label={`Decrease ${s.name} multiplier`}
-                  >
-                    −
-                  </button>
-                  <span className="w-6 text-center font-display text-ember">
-                    {multiplier > 0 ? `${multiplier}×` : "—"}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => adjust(s.id, 1)}
-                    disabled={s.eliminated || !canIncrease || currentEpisode?.locked}
-                    className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
-                    aria-label={`Increase ${s.name} multiplier`}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
-                <span>Points: {stats?.total ?? 0}</span>
-                <span>Avg: {stats ? stats.average.toFixed(1) : "0.0"}</span>
-                {!s.is_host && (
-                  <span className={s.has_vote ? "text-muted" : "text-rust"}>
-                    {s.has_vote ? "Can vote" : "No vote"}
-                  </span>
-                )}
-              </div>
-
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {activeAdvantages.length > 0 ? (
-                  activeAdvantages.map((a) => (
-                    <span
-                      key={a.id}
-                      className="rounded-full border px-2 py-0.5 text-[11px]"
-                      style={{
-                        borderColor: `${ADVANTAGE_COLORS[a.type]}66`,
-                        color: ADVANTAGE_COLORS[a.type],
-                      }}
-                    >
-                      {a.type}
-                    </span>
-                  ))
-                ) : (
-                  <span className="text-[11px] text-muted">No advantages held</span>
-                )}
               </div>
             </div>
           );
