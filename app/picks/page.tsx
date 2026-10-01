@@ -47,6 +47,8 @@ export default function PicksPage() {
   const [savingWinnerPick, setSavingWinnerPick] = useState(false);
   const [winnerPickError, setWinnerPickError] = useState<string | null>(null);
 
+  const [sortBy, setSortBy] = useState<"alphabetical" | "average" | "total">("alphabetical");
+
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
@@ -136,6 +138,32 @@ export default function PicksPage() {
     return stats;
   }, [statsData, currentEpisode]);
 
+  // Groups survivors before applying the chosen sort within each group —
+  // active survivors first, then the host (who has no stats to rank by),
+  // then eliminated survivors last, matching the ordering rule set when
+  // the host was added to the roster.
+  function groupRank(s: Survivor) {
+    if (s.eliminated) return 2;
+    if (s.is_host) return 1;
+    return 0;
+  }
+
+  const sortedSurvivors = useMemo(() => {
+    const arr = [...survivors];
+    arr.sort((a, b) => {
+      const rankDiff = groupRank(a) - groupRank(b);
+      if (rankDiff !== 0) return rankDiff;
+      if (sortBy === "alphabetical") return a.name.localeCompare(b.name);
+      const statsA = survivorStats.get(a.id);
+      const statsB = survivorStats.get(b.id);
+      const valA = sortBy === "average" ? statsA?.average ?? 0 : statsA?.total ?? 0;
+      const valB = sortBy === "average" ? statsB?.average ?? 0 : statsB?.total ?? 0;
+      if (valB !== valA) return valB - valA;
+      return a.name.localeCompare(b.name);
+    });
+    return arr;
+  }, [survivors, survivorStats, sortBy]);
+
   // New winner-pick selections exclude eliminated/host survivors, but an
   // *existing* pick must stay selectable even after they're eliminated —
   // the pick itself stays valid and keeps scoring, only new choices are
@@ -148,6 +176,9 @@ export default function PicksPage() {
     }
     return eligible;
   }, [survivors, winnerPickSurvivorId]);
+
+  const winnerPickSurvivor = survivors.find((s) => s.id === winnerPickSurvivorId);
+  const winnerPickDraftSurvivor = survivors.find((s) => s.id === winnerPickDraft);
 
   const totalUsed = useMemo(
     () => Object.values(picks).reduce((sum, m) => sum + m, 0),
@@ -231,11 +262,27 @@ export default function PicksPage() {
           budget.
         </p>
         {winnerPicksLocked ? (
-          <p className="mt-3 text-sm text-parchment">
-            {survivors.find((s) => s.id === winnerPickSurvivorId)?.name || "You didn't lock one in."}
-          </p>
+          <div className="mt-3 flex items-center gap-3">
+            {winnerPickSurvivor && (
+              <SurvivorAvatar
+                name={winnerPickSurvivor.name}
+                photoUrl={winnerPickSurvivor.photo_url}
+                className="h-12 w-12"
+              />
+            )}
+            <p className="text-sm text-parchment">
+              {winnerPickSurvivor?.name || "You didn't lock one in."}
+            </p>
+          </div>
         ) : (
-          <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {winnerPickDraftSurvivor && (
+              <SurvivorAvatar
+                name={winnerPickDraftSurvivor.name}
+                photoUrl={winnerPickDraftSurvivor.photo_url}
+                className="h-12 w-12"
+              />
+            )}
             <select
               value={winnerPickDraft}
               onChange={(e) => setWinnerPickDraft(e.target.value)}
@@ -300,7 +347,7 @@ export default function PicksPage() {
       </div>
 
       {budget && (
-        <div className="mt-8 rounded-md border border-surface2 bg-surface px-5 py-4">
+        <div className="sticky top-2 z-20 mt-8 rounded-md border border-surface2 bg-surface px-5 py-4 shadow-lg shadow-black/40">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted">
               {Object.keys(picks).length} survivor(s) selected
@@ -376,8 +423,24 @@ export default function PicksPage() {
 
       <div className="mt-8 rope-divider" />
 
-      <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        {survivors.map((s) => {
+      <div className="mt-6 flex items-center justify-end gap-2">
+        <label className="text-xs text-muted" htmlFor="sort-by">
+          Sort by:
+        </label>
+        <select
+          id="sort-by"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+          className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
+        >
+          <option value="alphabetical">Alphabetical</option>
+          <option value="average">Average score</option>
+          <option value="total">Total score</option>
+        </select>
+      </div>
+
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        {sortedSurvivors.map((s) => {
           const multiplier = picks[s.id] || 0;
           const stats = survivorStats.get(s.id);
           const activeAdvantages = (s.advantages || []).filter((a) => a.status === "active");
@@ -387,11 +450,11 @@ export default function PicksPage() {
           return (
             <div
               key={s.id}
-              className={`rounded-md border px-4 py-4 ${
+              className={`rounded-md border px-4 py-4 transition-colors ${
                 s.eliminated
                   ? "border-surface2 bg-surface/20 opacity-50"
                   : multiplier > 0
-                  ? "border-gold/50 bg-surface"
+                  ? "border-gold bg-gold/10 ring-1 ring-gold/40"
                   : "border-surface2 bg-surface/50"
               }`}
               style={
