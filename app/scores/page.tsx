@@ -33,21 +33,6 @@ export default function ScoresPage() {
   // in the "By player" view — see schema.sql's user_episode_points vs
   // _with_winner_pick views.
   const [withWinnerPick, setWithWinnerPick] = useState(true);
-  const [winnerPickStats, setWinnerPickStats] = useState<{ total: number; picked: number } | null>(
-    null
-  );
-
-  useEffect(() => {
-    fetch("/api/seasons/current")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((season) => {
-        if (!season) return;
-        fetch(`/api/admin/winner-picks-count?season_id=${season.id}`)
-          .then((r) => r.json())
-          .then(setWinnerPickStats);
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -106,27 +91,21 @@ export default function ScoresPage() {
           </button>
         </div>
 
-        {winnerPickStats && (
-          <span className="text-xs text-gold">
-            {winnerPickStats.picked}/{winnerPickStats.total} winner picks locked in!
-          </span>
-        )}
-
         {view === "user" && (
-          <label className="flex items-center gap-2 text-xs text-muted">
-            <span>Include winner pick bonus</span>
+          <label className="ml-auto flex items-center gap-2 text-xs text-muted">
+            <span>Winner Picks Count?</span>
             <button
               type="button"
               role="switch"
               aria-checked={withWinnerPick}
               onClick={() => setWithWinnerPick((v) => !v)}
-              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
-                withWinnerPick ? "bg-gold" : "bg-surface2"
+              className={`relative h-5 w-9 shrink-0 rounded-full border transition-colors ${
+                withWinnerPick ? "border-gold/60 bg-gold/30" : "border-surface2 bg-surface2"
               }`}
             >
               <span
-                className={`absolute top-0.5 h-4 w-4 rounded-full bg-jungle transition-transform ${
-                  withWinnerPick ? "translate-x-[18px]" : "translate-x-0.5"
+                className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-parchment shadow transition-transform ${
+                  withWinnerPick ? "translate-x-4" : "translate-x-0"
                 }`}
               />
             </button>
