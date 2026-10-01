@@ -156,7 +156,8 @@ function SeasonControlTab() {
       .then((r) => r.json())
       .then((eps) => {
         setEpisodes(eps);
-        setPicksEpisodeId(eps[0]?.id || "");
+        const active = eps.find((e: Episode) => e.is_current);
+        setPicksEpisodeId(active?.id || eps[0]?.id || "");
       })
       .finally(() => setLoading(false));
   }
@@ -356,6 +357,7 @@ function SeasonControlTab() {
           <option key={ep.id} value={ep.id}>
             Episode {ep.number}
             {ep.title ? ` — ${ep.title}` : ""}
+            {ep.is_current ? " (current)" : ""}
           </option>
         ))}
       </select>
