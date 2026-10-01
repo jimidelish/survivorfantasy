@@ -94,7 +94,7 @@ export default function ScoresPage() {
             title={ep.title ?? undefined}
             className={pillClass(scope === "episode" && selectedEpisodeId === ep.id)}
           >
-            Ep {ep.number}
+            {ep.number}
             {ep.is_current && <span className="ml-1 text-gold">•</span>}
           </button>
         ))}
