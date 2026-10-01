@@ -3,6 +3,8 @@
 import {
   BarChart,
   Bar,
+  Cell,
+  LabelList,
   XAxis,
   YAxis,
   Tooltip,
@@ -20,6 +22,8 @@ interface EpisodeMeta {
 interface SeriesEntry {
   id: string;
   name: string;
+  eliminated?: boolean;
+  eliminatedEpisodeNumber?: number | null;
   points: Record<string, number>;
 }
 
@@ -38,6 +42,21 @@ const PALETTE = [
   "#5C7A5A", // olive
 ];
 
+// Darkens a #rrggbb color by the given fraction (0-1) — used so eliminated
+// survivors' bars read as a dimmer version of each episode's own color,
+// rather than losing the episode color-coding entirely.
+function darken(hex: string, amount: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  const f = 1 - amount;
+  const toHex = (v: number) =>
+    Math.round(v * f)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
 export default function StackedPointsChart({
   episodes,
   series,
@@ -52,10 +71,21 @@ export default function StackedPointsChart({
   }
 
   const data = series.map((s) => {
-    const row: Record<string, string | number> = { name: s.name };
+    const row: Record<string, string | number | boolean | null> = {
+      name:
+        s.eliminated && s.eliminatedEpisodeNumber
+          ? `${s.name} — Out Ep ${s.eliminatedEpisodeNumber}`
+          : s.name,
+      eliminated: !!s.eliminated,
+      total: 0,
+    };
+    let total = 0;
     for (const ep of episodes) {
-      row[`ep_${ep.number}`] = s.points[ep.id] || 0;
+      const value = s.points[ep.id] || 0;
+      row[`ep_${ep.number}`] = value;
+      total += value;
     }
+    row.total = total;
     return row;
   });
 
@@ -70,7 +100,7 @@ export default function StackedPointsChart({
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 8, right: 16, left: 0, bottom: 8 }}
+          margin={{ top: 8, right: 40, left: 0, bottom: 8 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#2A362E" horizontal={false} />
           <XAxis
@@ -82,7 +112,7 @@ export default function StackedPointsChart({
           <YAxis
             dataKey="name"
             type="category"
-            width={110}
+            width={150}
             tick={{ fill: "#8FA294", fontSize: 12 }}
             axisLine={{ stroke: "#2A362E" }}
             tickLine={false}
@@ -97,16 +127,34 @@ export default function StackedPointsChart({
             labelStyle={{ color: "#C9A24C" }}
           />
           <Legend wrapperStyle={{ fontSize: 12, color: "#8FA294" }} />
-          {episodes.map((ep, i) => (
-            <Bar
-              key={ep.id}
-              dataKey={`ep_${ep.number}`}
-              name={`Ep ${ep.number}`}
-              stackId="a"
-              fill={PALETTE[i % PALETTE.length]}
-              radius={i === episodes.length - 1 ? [0, 3, 3, 0] : undefined}
-            />
-          ))}
+          {episodes.map((ep, i) => {
+            const baseColor = PALETTE[i % PALETTE.length];
+            const isLast = i === episodes.length - 1;
+            return (
+              <Bar
+                key={ep.id}
+                dataKey={`ep_${ep.number}`}
+                name={`Ep ${ep.number}`}
+                stackId="a"
+                fill={baseColor}
+                radius={isLast ? [0, 3, 3, 0] : undefined}
+              >
+                {isLast && (
+                  <LabelList
+                    dataKey="total"
+                    position="right"
+                    style={{ fill: "#EDE6D2", fontSize: 12 }}
+                  />
+                )}
+                {data.map((entry, idx) => (
+                  <Cell
+                    key={idx}
+                    fill={entry.eliminated ? darken(baseColor, 0.45) : baseColor}
+                  />
+                ))}
+              </Bar>
+            );
+          })}
         </BarChart>
       </ResponsiveContainer>
     </div>
