@@ -58,6 +58,18 @@ export default function ScoresPage() {
     }))
     .sort((a, b) => b.total - a.total);
 
+  // Active-state styling uses parchment rather than the app's usual ember
+  // accent specifically on this page — ember is also episode 1's bar color
+  // in the chart below, so an ember-highlighted button next to an
+  // ember-colored bar read as the same thing.
+  function pillClass(active: boolean) {
+    return `rounded-full px-4 py-1.5 text-sm ${
+      active
+        ? "bg-parchment text-jungle"
+        : "border border-surface2 text-parchment hover:border-gold/50"
+    }`;
+  }
+
   return (
     <div>
       <h1 className="font-display text-3xl font-semibold">Scores</h1>
@@ -68,64 +80,37 @@ export default function ScoresPage() {
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => setView("user")}
-          className={`rounded-full px-4 py-1.5 text-sm ${
-            view === "user"
-              ? "bg-ember text-jungle"
-              : "border border-surface2 text-parchment hover:border-gold/50"
-          }`}
-        >
-          By player
-        </button>
-        <button
-          onClick={() => setView("survivor")}
-          className={`rounded-full px-4 py-1.5 text-sm ${
-            view === "survivor"
-              ? "bg-ember text-jungle"
-              : "border border-surface2 text-parchment hover:border-gold/50"
-          }`}
-        >
-          By survivor
-        </button>
-
-        <span className="mx-1 h-5 w-px bg-surface2" />
-
-        <button
-          onClick={() => setScope("overall")}
-          className={`rounded-full px-4 py-1.5 text-sm ${
-            scope === "overall"
-              ? "bg-ember text-jungle"
-              : "border border-surface2 text-parchment hover:border-gold/50"
-          }`}
-        >
+        <button onClick={() => setScope("overall")} className={pillClass(scope === "overall")}>
           Overall
         </button>
-        <button
-          onClick={() => setScope("episode")}
-          className={`rounded-full px-4 py-1.5 text-sm ${
-            scope === "episode"
-              ? "bg-ember text-jungle"
-              : "border border-surface2 text-parchment hover:border-gold/50"
-          }`}
-        >
+        <button onClick={() => setScope("episode")} className={pillClass(scope === "episode")}>
           By episode
         </button>
         {scope === "episode" && (
-          <select
-            value={selectedEpisodeId}
-            onChange={(e) => setSelectedEpisodeId(e.target.value)}
-            className="rounded-md border border-surface2 bg-surface px-3 py-2 text-sm"
-          >
+          <>
+            <span className="mx-1 h-5 w-px bg-surface2" />
             {data.episodes.map((ep) => (
-              <option key={ep.id} value={ep.id}>
-                Episode {ep.number}
-                {ep.title ? ` — ${ep.title}` : ""}
-                {ep.is_current ? " (current)" : ""}
-              </option>
+              <button
+                key={ep.id}
+                onClick={() => setSelectedEpisodeId(ep.id)}
+                title={ep.title ?? undefined}
+                className={pillClass(selectedEpisodeId === ep.id)}
+              >
+                Ep {ep.number}
+                {ep.is_current && <span className="ml-1 text-gold">•</span>}
+              </button>
             ))}
-          </select>
+          </>
         )}
+      </div>
+
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <button onClick={() => setView("user")} className={pillClass(view === "user")}>
+          By player
+        </button>
+        <button onClick={() => setView("survivor")} className={pillClass(view === "survivor")}>
+          By survivor
+        </button>
       </div>
 
       {loading ? (
@@ -143,15 +128,15 @@ export default function ScoresPage() {
           <ul className="mt-6 divide-y divide-surface2">
             {totals.map((s) => (
               <li key={s.id} className="flex items-center justify-between py-3">
-                <span className={s.eliminated ? "text-muted line-through" : "text-parchment"}>
+                <span className={s.eliminated ? "text-muted" : "text-parchment"}>
                   {s.name}
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="font-display text-lg text-ember">{s.total}</span>
                   {s.eliminated && s.eliminatedEpisodeNumber && (
-                    <span className="ml-2 text-xs text-rust no-underline">
-                      Out Ep {s.eliminatedEpisodeNumber}
-                    </span>
+                    <span className="text-xs text-rust">Out Ep {s.eliminatedEpisodeNumber}</span>
                   )}
                 </span>
-                <span className="font-display text-lg text-ember">{s.total}</span>
               </li>
             ))}
           </ul>

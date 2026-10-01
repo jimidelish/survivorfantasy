@@ -72,12 +72,10 @@ export default function StackedPointsChart({
 
   const data = series.map((s) => {
     const row: Record<string, string | number | boolean | null> = {
-      name:
-        s.eliminated && s.eliminatedEpisodeNumber
-          ? `${s.name} — Out Ep ${s.eliminatedEpisodeNumber}`
-          : s.name,
+      name: s.name,
       eliminated: !!s.eliminated,
       total: 0,
+      totalLabel: "",
     };
     let total = 0;
     for (const ep of episodes) {
@@ -86,6 +84,10 @@ export default function StackedPointsChart({
       total += value;
     }
     row.total = total;
+    row.totalLabel =
+      s.eliminated && s.eliminatedEpisodeNumber
+        ? `${total} • Out Ep ${s.eliminatedEpisodeNumber}`
+        : `${total}`;
     return row;
   });
 
@@ -100,7 +102,7 @@ export default function StackedPointsChart({
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 8, right: 40, left: 0, bottom: 8 }}
+          margin={{ top: 8, right: 90, left: 0, bottom: 8 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#2A362E" horizontal={false} />
           <XAxis
@@ -112,7 +114,7 @@ export default function StackedPointsChart({
           <YAxis
             dataKey="name"
             type="category"
-            width={150}
+            width={110}
             tick={{ fill: "#8FA294", fontSize: 12 }}
             axisLine={{ stroke: "#2A362E" }}
             tickLine={false}
@@ -141,7 +143,7 @@ export default function StackedPointsChart({
               >
                 {isLast && (
                   <LabelList
-                    dataKey="total"
+                    dataKey="totalLabel"
                     position="right"
                     style={{ fill: "#EDE6D2", fontSize: 12 }}
                   />
