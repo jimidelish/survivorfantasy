@@ -99,8 +99,8 @@ export default function ScoresPage() {
               role="switch"
               aria-checked={withWinnerPick}
               onClick={() => setWithWinnerPick((v) => !v)}
-              className={`relative h-5 w-9 shrink-0 rounded-full border transition-colors ${
-                withWinnerPick ? "border-gold/60 bg-gold/30" : "border-surface2 bg-surface2"
+              className={`relative h-5 w-9 shrink-0 rounded-full border border-surface2 transition-colors ${
+                withWinnerPick ? "bg-gold" : "bg-surface2"
               }`}
             >
               <span
