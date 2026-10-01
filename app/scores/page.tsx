@@ -43,11 +43,6 @@ export default function ScoresPage() {
       .finally(() => setLoading(false));
   }, [view]);
 
-  const chartEpisodes =
-    scope === "episode"
-      ? data.episodes.filter((ep) => ep.id === selectedEpisodeId)
-      : data.episodes;
-
   const totals = data.series
     .map((s) => ({
       ...s,
@@ -79,31 +74,7 @@ export default function ScoresPage() {
           : "Scores for a single episode."}
       </p>
 
-      <div className="mt-6 rounded-lg border border-surface2 bg-surface/50 px-3 py-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <button onClick={() => setScope("overall")} className={pillClass(scope === "overall")}>
-            Overall
-          </button>
-          <span className="mx-1 h-5 w-px bg-surface2" />
-          <span className="text-xs uppercase tracking-wide text-muted">Episode:</span>
-          {data.episodes.map((ep) => (
-            <button
-              key={ep.id}
-              onClick={() => {
-                setScope("episode");
-                setSelectedEpisodeId(ep.id);
-              }}
-              title={ep.title ?? undefined}
-              className={pillClass(scope === "episode" && selectedEpisodeId === ep.id)}
-            >
-              {ep.number}
-              {ep.is_current && <span className="ml-1 text-gold">•</span>}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+      <div className="mt-6 flex flex-wrap items-center gap-2">
         <span className="text-xs uppercase tracking-wide text-muted">View:</span>
         <button onClick={() => setView("user")} className={pillClass(view === "user")}>
           By player
@@ -118,9 +89,18 @@ export default function ScoresPage() {
       ) : (
         <>
           <StackedPointsChart
-            episodes={chartEpisodes}
+            episodes={data.episodes}
             series={totals}
             emptyLabel="No episodes logged yet this season."
+            activeEpisodeId={scope === "episode" ? selectedEpisodeId : null}
+            onEpisodeToggle={(episodeId) => {
+              if (scope === "episode" && selectedEpisodeId === episodeId) {
+                setScope("overall");
+              } else {
+                setScope("episode");
+                setSelectedEpisodeId(episodeId);
+              }
+            }}
           />
 
           <div className="mt-10 rope-divider" />

@@ -42,6 +42,10 @@ const PALETTE = [
   "#5C7A5A", // olive
 ];
 
+// A legend entry for an episode that isn't the active filter, so the
+// clicked-on episode visibly stands out from the rest once filtered.
+const INACTIVE_LEGEND_COLOR = "#3A463D";
+
 // Darkens a #rrggbb color by the given fraction (0-1) — used so eliminated
 // survivors' bars read as a dimmer version of each episode's own color,
 // rather than losing the episode color-coding entirely.
@@ -61,14 +65,32 @@ export default function StackedPointsChart({
   episodes,
   series,
   emptyLabel,
+  activeEpisodeId = null,
+  onEpisodeToggle,
 }: {
   episodes: EpisodeMeta[];
   series: SeriesEntry[];
   emptyLabel: string;
+  // Non-null filters the chart down to a single episode's scores — clicking
+  // that episode's legend entry again (handled by the caller) clears it.
+  activeEpisodeId?: string | null;
+  onEpisodeToggle?: (episodeId: string) => void;
 }) {
   if (episodes.length === 0 || series.length === 0) {
     return <p className="mt-6 text-sm text-muted">{emptyLabel}</p>;
   }
+
+  // The legend always lists every episode (so any of them can be clicked to
+  // filter), but the bars themselves only render the active one when a
+  // filter is set — otherwise the full stack.
+  const barEpisodes = activeEpisodeId
+    ? episodes.filter((ep) => ep.id === activeEpisodeId)
+    : episodes;
+
+  const colorForEpisode = (ep: EpisodeMeta) => {
+    const i = episodes.findIndex((e) => e.id === ep.id);
+    return PALETTE[i % PALETTE.length];
+  };
 
   const data = series.map((s) => {
     const row: Record<string, string | number | boolean | null> = {
@@ -78,7 +100,7 @@ export default function StackedPointsChart({
       total: 0,
     };
     let total = 0;
-    for (const ep of episodes) {
+    for (const ep of barEpisodes) {
       const value = s.points[ep.id] || 0;
       row[`ep_${ep.number}`] = value;
       total += value;
@@ -118,8 +140,23 @@ export default function StackedPointsChart({
   // illegibly.
   const chartHeight = Math.max(320, data.length * 36 + 60);
 
+  const legendPayload = episodes.map((ep) => ({
+    value: `Ep ${ep.number}`,
+    type: "square" as const,
+    id: ep.id,
+    dataKey: `ep_${ep.number}`,
+    color:
+      activeEpisodeId && activeEpisodeId !== ep.id
+        ? INACTIVE_LEGEND_COLOR
+        : colorForEpisode(ep),
+  }));
+
   return (
     <div className="mt-6 w-full" style={{ height: chartHeight }}>
+      <p className="mb-2 text-xs text-muted">
+        Click an episode in the legend below to filter the chart to just that episode — click it
+        again to go back to the full season.
+      </p>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
@@ -150,10 +187,17 @@ export default function StackedPointsChart({
             }}
             labelStyle={{ color: "#C9A24C" }}
           />
-          <Legend wrapperStyle={{ fontSize: 12, color: "#8FA294" }} />
-          {episodes.map((ep, i) => {
-            const baseColor = PALETTE[i % PALETTE.length];
-            const isLast = i === episodes.length - 1;
+          <Legend
+            payload={legendPayload}
+            wrapperStyle={{ fontSize: 12, color: "#8FA294", cursor: "pointer" }}
+            onClick={(entry) => {
+              const id = (entry as { id?: string }).id;
+              if (id && onEpisodeToggle) onEpisodeToggle(id);
+            }}
+          />
+          {barEpisodes.map((ep, i) => {
+            const baseColor = colorForEpisode(ep);
+            const isLast = i === barEpisodes.length - 1;
             return (
               <Bar
                 key={ep.id}
