@@ -83,25 +83,21 @@ export default function ScoresPage() {
         <button onClick={() => setScope("overall")} className={pillClass(scope === "overall")}>
           Overall
         </button>
-        <button onClick={() => setScope("episode")} className={pillClass(scope === "episode")}>
-          By episode
-        </button>
-        {scope === "episode" && (
-          <>
-            <span className="mx-1 h-5 w-px bg-surface2" />
-            {data.episodes.map((ep) => (
-              <button
-                key={ep.id}
-                onClick={() => setSelectedEpisodeId(ep.id)}
-                title={ep.title ?? undefined}
-                className={pillClass(selectedEpisodeId === ep.id)}
-              >
-                Ep {ep.number}
-                {ep.is_current && <span className="ml-1 text-gold">•</span>}
-              </button>
-            ))}
-          </>
-        )}
+        <span className="mx-1 h-5 w-px bg-surface2" />
+        {data.episodes.map((ep) => (
+          <button
+            key={ep.id}
+            onClick={() => {
+              setScope("episode");
+              setSelectedEpisodeId(ep.id);
+            }}
+            title={ep.title ?? undefined}
+            className={pillClass(scope === "episode" && selectedEpisodeId === ep.id)}
+          >
+            Ep {ep.number}
+            {ep.is_current && <span className="ml-1 text-gold">•</span>}
+          </button>
+        ))}
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -130,13 +126,13 @@ export default function ScoresPage() {
               <li key={s.id} className="flex items-center justify-between py-3">
                 <span className={s.eliminated ? "text-muted" : "text-parchment"}>
                   {s.name}
-                </span>
-                <span className="flex items-center gap-2">
-                  <span className="font-display text-lg text-ember">{s.total}</span>
                   {s.eliminated && s.eliminatedEpisodeNumber && (
-                    <span className="text-xs text-rust">Out Ep {s.eliminatedEpisodeNumber}</span>
+                    <span className="ml-2 text-xs text-rust">
+                      Out Ep {s.eliminatedEpisodeNumber}
+                    </span>
                   )}
                 </span>
+                <span className="font-display text-lg text-ember">{s.total}</span>
               </li>
             ))}
           </ul>

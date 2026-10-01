@@ -74,8 +74,8 @@ export default function StackedPointsChart({
     const row: Record<string, string | number | boolean | null> = {
       name: s.name,
       eliminated: !!s.eliminated,
+      eliminatedEpisodeNumber: s.eliminatedEpisodeNumber ?? null,
       total: 0,
-      totalLabel: "",
     };
     let total = 0;
     for (const ep of episodes) {
@@ -84,12 +84,34 @@ export default function StackedPointsChart({
       total += value;
     }
     row.total = total;
-    row.totalLabel =
-      s.eliminated && s.eliminatedEpisodeNumber
-        ? `${total} • Out Ep ${s.eliminatedEpisodeNumber}`
-        : `${total}`;
     return row;
   });
+
+  // Renders the total followed by, for eliminated survivors, an " Out Ep N"
+  // note in the same rust color the Scores page list uses for it — a plain
+  // LabelList can only paint its whole string one color, so this builds the
+  // two-tone label by hand from the data row matching this bar (via index).
+  function totalLabel(props: {
+    x?: string | number;
+    y?: string | number;
+    width?: string | number;
+    height?: string | number;
+    index?: number;
+  }) {
+    const { x = 0, y = 0, width = 0, height = 0, index } = props;
+    if (index === undefined) return null;
+    const entry = data[index];
+    const cx = Number(x) + Number(width) + 6;
+    const cy = Number(y) + Number(height) / 2;
+    return (
+      <text x={cx} y={cy} dominantBaseline="middle" fontSize={12}>
+        <tspan fill="#EDE6D2">{entry.total}</tspan>
+        {entry.eliminated && entry.eliminatedEpisodeNumber ? (
+          <tspan fill="#8F3B2E"> • Out Ep {entry.eliminatedEpisodeNumber}</tspan>
+        ) : null}
+      </text>
+    );
+  }
 
   // Horizontal bars need a row's worth of height per entry rather than a
   // fixed height — with ~20 survivors, a fixed h-96 would cram them
@@ -141,13 +163,7 @@ export default function StackedPointsChart({
                 fill={baseColor}
                 radius={isLast ? [0, 3, 3, 0] : undefined}
               >
-                {isLast && (
-                  <LabelList
-                    dataKey="totalLabel"
-                    position="right"
-                    style={{ fill: "#EDE6D2", fontSize: 12 }}
-                  />
-                )}
+                {isLast && <LabelList dataKey="total" content={totalLabel} />}
                 {data.map((entry, idx) => (
                   <Cell
                     key={idx}
