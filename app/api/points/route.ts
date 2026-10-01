@@ -6,10 +6,15 @@ import { getCurrentSeason } from "@/lib/currentSeason";
 // GET /api/points?by=survivor  -> each survivor's points, broken down per episode
 // Both scoped to the current season. Shape:
 // { episodes: [{id, number, title}], series: [{ id, name, points: { [episodeId]: number } }] }
+// by=user also accepts with_winner_pick=false to read the bonus-free
+// baseline (user_episode_points) instead of the default
+// user_episode_points_with_winner_pick — used by the Scores page toggle so
+// players can compare standings with and without the winner-pick bonus.
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const by = req.nextUrl.searchParams.get("by") === "survivor" ? "survivor" : "user";
+  const withWinnerPick = req.nextUrl.searchParams.get("with_winner_pick") !== "false";
 
   const season = await getCurrentSeason();
   if (!season) return NextResponse.json({ episodes: [], series: [] });
@@ -28,11 +33,8 @@ export async function GET(req: NextRequest) {
     const [{ data: users, error: usersError }, { data: points, error: pointsError }] =
       await Promise.all([
         supabaseAdmin.from("users").select("id, name"),
-        // The "real" per-episode total, including the winner-pick bonus —
-        // see schema.sql's comments on user_episode_points vs _with_
-        // winner_pick if you ever need the bonus-free baseline instead.
         supabaseAdmin
-          .from("user_episode_points_with_winner_pick")
+          .from(withWinnerPick ? "user_episode_points_with_winner_pick" : "user_episode_points")
           .select("user_id, episode_id, points")
           .in("episode_id", episodeIds),
       ]);

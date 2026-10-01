@@ -28,9 +28,30 @@ export default function ScoresPage() {
   const [data, setData] = useState<PointsResponse>({ episodes: [], series: [] });
   const [loading, setLoading] = useState(true);
 
+  // The winner-pick bonus only affects player totals (it's a per-user bet on
+  // a survivor), not survivor totals, so this toggle is only shown/applied
+  // in the "By player" view — see schema.sql's user_episode_points vs
+  // _with_winner_pick views.
+  const [withWinnerPick, setWithWinnerPick] = useState(true);
+  const [winnerPickStats, setWinnerPickStats] = useState<{ total: number; picked: number } | null>(
+    null
+  );
+
+  useEffect(() => {
+    fetch("/api/seasons/current")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((season) => {
+        if (!season) return;
+        fetch(`/api/admin/winner-picks-count?season_id=${season.id}`)
+          .then((r) => r.json())
+          .then(setWinnerPickStats);
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/points?by=${view}`)
+    fetch(`/api/points?by=${view}&with_winner_pick=${withWinnerPick}`)
       .then((r) => r.json())
       .then((result: PointsResponse) => {
         setData(result);
@@ -41,7 +62,7 @@ export default function ScoresPage() {
         });
       })
       .finally(() => setLoading(false));
-  }, [view]);
+  }, [view, withWinnerPick]);
 
   const totals = data.series
     .map((s) => ({
@@ -74,14 +95,43 @@ export default function ScoresPage() {
           : "Scores for a single episode."}
       </p>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
-        <span className="text-xs uppercase tracking-wide text-muted">View:</span>
-        <button onClick={() => setView("user")} className={pillClass(view === "user")}>
-          By player
-        </button>
-        <button onClick={() => setView("survivor")} className={pillClass(view === "survivor")}>
-          By survivor
-        </button>
+      <div className="mt-6 flex flex-wrap items-center gap-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs uppercase tracking-wide text-muted">View:</span>
+          <button onClick={() => setView("user")} className={pillClass(view === "user")}>
+            By player
+          </button>
+          <button onClick={() => setView("survivor")} className={pillClass(view === "survivor")}>
+            By survivor
+          </button>
+        </div>
+
+        {winnerPickStats && (
+          <span className="text-xs text-gold">
+            {winnerPickStats.picked}/{winnerPickStats.total} winner picks locked in!
+          </span>
+        )}
+
+        {view === "user" && (
+          <label className="flex items-center gap-2 text-xs text-muted">
+            <span>Include winner pick bonus</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={withWinnerPick}
+              onClick={() => setWithWinnerPick((v) => !v)}
+              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+                withWinnerPick ? "bg-gold" : "bg-surface2"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-jungle transition-transform ${
+                  withWinnerPick ? "translate-x-[18px]" : "translate-x-0.5"
+                }`}
+              />
+            </button>
+          </label>
+        )}
       </div>
 
       {loading ? (
