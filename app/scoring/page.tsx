@@ -4,19 +4,29 @@ import { useEffect, useMemo, useState } from "react";
 import { AppUser, EventType, LOCAL_STORAGE_KEY } from "@/lib/types";
 import { getTriggerAction } from "@/lib/eventTriggers";
 
+interface NewTypeDraft {
+  tempId: string;
+  name: string;
+  pointValue: string;
+}
+
 export default function ScoringPage() {
   const [user, setUser] = useState<AppUser | null>(null);
   const [eventTypes, setEventTypes] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pendingEdits, setPendingEdits] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
 
+  // All three of these are staged — nothing actually hits the API until
+  // Save changes is clicked, consistent across point-value edits, adds,
+  // and removals.
+  const [pendingEdits, setPendingEdits] = useState<Record<string, number>>({});
+  const [pendingNewTypes, setPendingNewTypes] = useState<Record<string, NewTypeDraft[]>>({});
+  const [pendingRemovals, setPendingRemovals] = useState<Set<string>>(new Set());
+
   const [editingCategory, setEditingCategory] = useState<string | null>(null);
-  const [newTypeDrafts, setNewTypeDrafts] = useState<Record<string, { name: string; pointValue: string }>>(
+  const [newTypeInput, setNewTypeInput] = useState<Record<string, { name: string; pointValue: string }>>(
     {}
   );
-  const [addingCategory, setAddingCategory] = useState<string | null>(null);
-  const [removingId, setRemovingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,16 +72,29 @@ export default function ScoringPage() {
 
   async function saveChanges() {
     setSaving(true);
-    await Promise.all(
-      Object.entries(pendingEdits).map(([id, pointValue]) =>
-        fetch(`/api/admin/event-types/${id}`, {
-          method: "PATCH",
+    const patches = Object.entries(pendingEdits).map(([id, pointValue]) =>
+      fetch(`/api/admin/event-types/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ point_value: pointValue }),
+      })
+    );
+    const creates = Object.entries(pendingNewTypes).flatMap(([category, drafts]) =>
+      drafts.map((d) =>
+        fetch("/api/admin/event-types", {
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ point_value: pointValue }),
+          body: JSON.stringify({ category, name: d.name, point_value: Number(d.pointValue) }),
         })
       )
     );
+    const deletes = Array.from(pendingRemovals).map((id) =>
+      fetch(`/api/admin/event-types/${id}`, { method: "DELETE" })
+    );
+    await Promise.all([...patches, ...creates, ...deletes]);
     setPendingEdits({});
+    setPendingNewTypes({});
+    setPendingRemovals(new Set());
     setSaving(false);
     refresh();
   }
@@ -82,84 +105,92 @@ export default function ScoringPage() {
   function toggleEdit(category: string, types: EventType[]) {
     setEditingCategory((prev) => {
       if (prev === category) {
-        discardPendingFor(types);
+        discardPendingFor(category, types);
         return null;
       }
       if (prev) {
         const prevTypes = grouped.find(([c]) => c === prev)?.[1] ?? [];
-        discardPendingFor(prevTypes);
+        discardPendingFor(prev, prevTypes);
       }
       return category;
     });
   }
 
-  function discardPendingFor(types: EventType[]) {
+  function discardPendingFor(category: string, types: EventType[]) {
     setPendingEdits((pe) => {
       const copy = { ...pe };
       for (const t of types) delete copy[t.id];
       return copy;
     });
+    setPendingNewTypes((prev) => {
+      const copy = { ...prev };
+      delete copy[category];
+      return copy;
+    });
+    setPendingRemovals((prev) => {
+      const next = new Set(prev);
+      for (const t of types) next.delete(t.id);
+      return next;
+    });
   }
 
-  function updateDraft(category: string, field: "name" | "pointValue", value: string) {
-    setNewTypeDrafts((prev) => {
+  function updateNewTypeInput(category: string, field: "name" | "pointValue", value: string) {
+    setNewTypeInput((prev) => {
       const current = prev[category] ?? { name: "", pointValue: "" };
       return { ...prev, [category]: { ...current, [field]: value } };
     });
   }
 
-  async function addType(category: string) {
-    const draft = newTypeDrafts[category];
-    const name = draft?.name.trim();
-    const pointValue = Number(draft?.pointValue);
+  // Stages a new row locally — nothing is sent to the server until Save
+  // changes, same as a point-value edit.
+  function stageNewType(category: string) {
+    const input = newTypeInput[category];
+    const name = input?.name.trim();
+    const pointValue = Number(input?.pointValue);
     if (!name) {
       setActionError("Enter a name for the new event type.");
       return;
     }
-    if (!draft?.pointValue || !Number.isFinite(pointValue)) {
+    if (!input?.pointValue || !Number.isFinite(pointValue)) {
       setActionError("Enter a numeric point value.");
       return;
     }
     setActionError(null);
-    setAddingCategory(category);
-    const res = await fetch("/api/admin/event-types", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, name, point_value: pointValue }),
-    });
-    const data = await res.json();
-    setAddingCategory(null);
-    if (!res.ok) {
-      setActionError(data.error || "Failed to add event type.");
-      return;
-    }
-    setNewTypeDrafts((prev) => ({ ...prev, [category]: { name: "", pointValue: "" } }));
-    refresh();
+    setPendingNewTypes((prev) => ({
+      ...prev,
+      [category]: [
+        ...(prev[category] ?? []),
+        { tempId: crypto.randomUUID(), name, pointValue: input.pointValue },
+      ],
+    }));
+    setNewTypeInput((prev) => ({ ...prev, [category]: { name: "", pointValue: "" } }));
   }
 
-  async function removeType(t: EventType) {
-    const confirmed = window.confirm(
-      `Remove "${t.name}"? It'll disappear from the Scoring Guide and Episode Events — past events that already used it keep their recorded points.`
-    );
-    if (!confirmed) return;
-    setActionError(null);
-    setRemovingId(t.id);
-    const res = await fetch(`/api/admin/event-types/${t.id}`, { method: "DELETE" });
-    setRemovingId(null);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setActionError(data.error || "Failed to remove event type.");
-      return;
-    }
-    refresh();
+  function unstageNewType(category: string, tempId: string) {
+    setPendingNewTypes((prev) => ({
+      ...prev,
+      [category]: (prev[category] ?? []).filter((d) => d.tempId !== tempId),
+    }));
+  }
+
+  function toggleRemoval(id: string) {
+    setPendingRemovals((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   if (loading) return <p className="text-sm text-muted">Loading scoring guide…</p>;
 
-  // Only the open category can have entries here (toggleEdit discards any
-  // other category's drafts), so this alone is enough to block switching
-  // or closing out of unsaved point-value edits anywhere on the page.
-  const hasUnsavedChanges = Object.keys(pendingEdits).length > 0;
+  // Only the open category can have entries across these (toggleEdit
+  // discards any other category's drafts), so this alone is enough to
+  // block switching or closing out of unsaved changes anywhere on the page.
+  const hasUnsavedChanges =
+    Object.keys(pendingEdits).length > 0 ||
+    Object.values(pendingNewTypes).some((list) => list.length > 0) ||
+    pendingRemovals.size > 0;
 
   return (
     <div>
@@ -174,9 +205,12 @@ export default function ScoringPage() {
 
       <div className="mt-8 space-y-8">
         {grouped.map(([category, types]) => {
-          const categoryHasChanges = types.some((t) => pendingEdits[t.id] !== undefined);
+          const newDrafts = pendingNewTypes[category] ?? [];
+          const categoryHasChanges =
+            types.some((t) => pendingEdits[t.id] !== undefined || pendingRemovals.has(t.id)) ||
+            newDrafts.length > 0;
           const editing = editingCategory === category;
-          const draft = newTypeDrafts[category];
+          const input = newTypeInput[category];
           return (
             <div key={category}>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -188,7 +222,7 @@ export default function ScoringPage() {
                     disabled={hasUnsavedChanges}
                     title={
                       hasUnsavedChanges
-                        ? "Save or discard your unsaved point-value changes first"
+                        ? "Save or discard your unsaved changes first"
                         : undefined
                     }
                     className={`rounded-full border px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${
@@ -210,10 +244,31 @@ export default function ScoringPage() {
                     editable={editing}
                     pendingValue={pendingEdits[t.id]}
                     onChange={setPendingValue}
-                    onRemove={editing ? removeType : undefined}
+                    onToggleRemove={editing ? () => toggleRemoval(t.id) : undefined}
+                    pendingRemoval={pendingRemovals.has(t.id)}
                     isProtected={!!getTriggerAction(t.category, t.name)}
-                    removing={removingId === t.id}
                   />
+                ))}
+                {newDrafts.map((d) => (
+                  <div
+                    key={d.tempId}
+                    className="flex items-center justify-between gap-3 rounded-md border border-gold/50 bg-surface px-4 py-3"
+                  >
+                    <span className="text-sm text-parchment">
+                      {d.name} <span className="ml-1 text-[10px] text-gold">new</span>
+                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="font-display text-sm text-gold">{d.pointValue}</span>
+                      <button
+                        type="button"
+                        onClick={() => unstageNewType(category, d.tempId)}
+                        title={`Remove staged ${d.name}`}
+                        className="h-6 w-6 shrink-0 rounded-full border border-surface2 text-xs text-rust hover:border-rust"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  </div>
                 ))}
               </div>
 
@@ -221,24 +276,23 @@ export default function ScoringPage() {
                 <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-surface2 px-4 py-3">
                   <input
                     placeholder="New event name"
-                    value={draft?.name ?? ""}
-                    onChange={(e) => updateDraft(category, "name", e.target.value)}
+                    value={input?.name ?? ""}
+                    onChange={(e) => updateNewTypeInput(category, "name", e.target.value)}
                     className="min-w-[10rem] flex-1 rounded-md border border-surface2 bg-surface2 px-3 py-1.5 text-sm"
                   />
                   <input
                     type="number"
                     placeholder="Points"
-                    value={draft?.pointValue ?? ""}
-                    onChange={(e) => updateDraft(category, "pointValue", e.target.value)}
+                    value={input?.pointValue ?? ""}
+                    onChange={(e) => updateNewTypeInput(category, "pointValue", e.target.value)}
                     className="w-20 rounded-md border border-surface2 bg-surface2 px-2 py-1.5 text-right text-sm"
                   />
                   <button
                     type="button"
-                    onClick={() => addType(category)}
-                    disabled={addingCategory === category}
-                    className="rounded-md bg-ember px-3 py-1.5 text-xs font-medium text-jungle hover:opacity-90 disabled:opacity-40"
+                    onClick={() => stageNewType(category)}
+                    className="rounded-md bg-ember px-3 py-1.5 text-xs font-medium text-jungle hover:opacity-90"
                   >
-                    {addingCategory === category ? "Adding…" : "Add event type"}
+                    Add event type
                   </button>
                 </div>
               )}
@@ -269,17 +323,17 @@ function ScoringRow({
   editable,
   pendingValue,
   onChange,
-  onRemove,
+  onToggleRemove,
+  pendingRemoval,
   isProtected,
-  removing,
 }: {
   eventType: EventType;
   editable: boolean;
   pendingValue: number | undefined;
   onChange: (id: string, value: number | undefined) => void;
-  onRemove?: (t: EventType) => void;
+  onToggleRemove?: () => void;
+  pendingRemoval?: boolean;
   isProtected?: boolean;
-  removing?: boolean;
 }) {
   const [text, setText] = useState(String(pendingValue ?? eventType.point_value));
 
@@ -304,12 +358,20 @@ function ScoringRow({
   return (
     <div
       className={`flex items-center justify-between gap-3 rounded-md border px-4 py-3 ${
-        dirty ? "border-gold/50 bg-surface" : "border-surface2 bg-surface"
+        pendingRemoval
+          ? "border-rust/50 bg-surface opacity-60"
+          : dirty
+          ? "border-gold/50 bg-surface"
+          : "border-surface2 bg-surface"
       }`}
     >
-      <span className="text-sm text-parchment">{eventType.name}</span>
+      <span className={`text-sm text-parchment ${pendingRemoval ? "line-through" : ""}`}>
+        {eventType.name}
+      </span>
       <div className="flex shrink-0 items-center gap-2">
-        {editable ? (
+        {pendingRemoval ? (
+          <span className="text-xs text-rust">Removing</span>
+        ) : editable ? (
           <input
             type="number"
             value={text}
@@ -326,20 +388,27 @@ function ScoringRow({
             {eventType.point_value}
           </span>
         )}
-        {editable && onRemove && (
+        {editable && onToggleRemove && !isProtected && (
           <button
             type="button"
-            onClick={() => onRemove(eventType)}
-            disabled={isProtected || removing}
-            title={
-              isProtected
-                ? "Required by built-in game logic — can't be removed"
-                : `Remove ${eventType.name}`
-            }
-            className="h-6 w-6 shrink-0 rounded-full border border-surface2 text-xs text-rust hover:border-rust disabled:opacity-30"
+            onClick={onToggleRemove}
+            title={pendingRemoval ? `Undo removing ${eventType.name}` : `Remove ${eventType.name}`}
+            className={`h-6 w-6 shrink-0 rounded-full border text-xs ${
+              pendingRemoval
+                ? "border-gold/50 text-gold hover:border-gold"
+                : "border-surface2 text-rust hover:border-rust"
+            }`}
+          >
+            {pendingRemoval ? "↺" : "×"}
+          </button>
+        )}
+        {editable && isProtected && (
+          <span
+            title="Required by built-in game logic — can't be removed"
+            className="h-6 w-6 shrink-0 rounded-full border border-surface2 text-center text-xs leading-6 text-muted/50"
           >
             ×
-          </button>
+          </span>
         )}
       </div>
     </div>
