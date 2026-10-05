@@ -404,7 +404,12 @@ export default function PicksPage() {
                   </span>
                   <div className="flex flex-wrap gap-3">
                     {[...group.picks]
-                      .sort((a, b) => a.survivor_name.localeCompare(b.survivor_name))
+                      .sort((a, b) => {
+                        const countA = otherPicksBySurvivor.get(a.survivor_id)?.length ?? 0;
+                        const countB = otherPicksBySurvivor.get(b.survivor_id)?.length ?? 0;
+                        if (countB !== countA) return countB - countA;
+                        return a.survivor_name.localeCompare(b.survivor_name);
+                      })
                       .map((p) => (
                       <div
                         key={p.survivor_id}
