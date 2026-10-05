@@ -2,6 +2,7 @@ export interface AppUser {
   id: string;
   name: string;
   is_admin: boolean;
+  is_handicap: boolean;
 }
 
 export interface Season {

@@ -35,6 +35,11 @@ create table if not exists users (
   id uuid primary key default gen_random_uuid(),
   name text not null unique,
   is_admin boolean not null default false,
+  -- Opt-in disadvantage-offsetting mode: on My Picks, a handicap user can
+  -- see everyone else's picks for the episode (including on each survivor's
+  -- card), before locking in their own. Toggled by hand via SQL, same as
+  -- is_admin — no admin-page UI for it.
+  is_handicap boolean not null default false,
   created_at timestamptz not null default now()
 );
 

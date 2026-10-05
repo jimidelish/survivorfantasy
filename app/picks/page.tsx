@@ -26,6 +26,12 @@ interface SurvivorStatsResponse {
   series: { id: string; points: Record<string, number> }[];
 }
 
+interface UserPicksGroup {
+  user_id: string;
+  user_name: string;
+  picks: { survivor_id: string; survivor_name: string; photo_url: string | null; multiplier: number }[];
+}
+
 export default function PicksPage() {
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
@@ -48,6 +54,8 @@ export default function PicksPage() {
   const [winnerPickError, setWinnerPickError] = useState<string | null>(null);
 
   const [sortBy, setSortBy] = useState<"alphabetical" | "average" | "total">("alphabetical");
+
+  const [allPicks, setAllPicks] = useState<UserPicksGroup[]>([]);
 
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -117,6 +125,19 @@ export default function PicksPage() {
       .then(setBudget);
   }, [user, episodeId]);
 
+  // Handicap-only: lets a struggling player see everyone else's picks for
+  // the episode before locking in their own, as an opt-in disadvantage
+  // offset — see is_handicap in schema.sql.
+  useEffect(() => {
+    if (!user?.is_handicap || !episodeId) {
+      setAllPicks([]);
+      return;
+    }
+    fetch(`/api/picks/all?episode_id=${episodeId}`)
+      .then((r) => r.json())
+      .then(setAllPicks);
+  }, [user, episodeId]);
+
   const currentEpisode = episodes.find((e) => e.id === episodeId);
 
   // A survivor's season-to-date points and per-episode average, counted only
@@ -179,6 +200,26 @@ export default function PicksPage() {
 
   const winnerPickSurvivor = survivors.find((s) => s.id === winnerPickSurvivorId);
   const winnerPickDraftSurvivor = survivors.find((s) => s.id === winnerPickDraft);
+
+  // Other players' picks for the currently selected episode (self excluded)
+  // — only populated when the signed-in user is a handicap account.
+  const otherUserPicks = useMemo(
+    () => allPicks.filter((g) => g.user_id !== user?.id),
+    [allPicks, user]
+  );
+
+  // survivor id -> who else picked them, for the per-card indicator.
+  const otherPicksBySurvivor = useMemo(() => {
+    const map = new Map<string, { user_name: string; multiplier: number }[]>();
+    for (const group of otherUserPicks) {
+      for (const p of group.picks) {
+        const list = map.get(p.survivor_id) || [];
+        list.push({ user_name: group.user_name, multiplier: p.multiplier });
+        map.set(p.survivor_id, list);
+      }
+    }
+    return map;
+  }, [otherUserPicks]);
 
   const totalUsed = useMemo(
     () => Object.values(picks).reduce((sum, m) => sum + m, 0),
@@ -345,6 +386,45 @@ export default function PicksPage() {
           </button>
         </div>
       </div>
+
+      {user.is_handicap && (
+        <div className="mt-6 rounded-md border border-gold/30 bg-surface px-5 py-4">
+          <div className="flex items-center justify-between">
+            <span className="font-display text-lg">Other players&apos; picks</span>
+            <span className="rounded-full bg-gold/20 px-3 py-1 text-xs text-gold">Handicap</span>
+          </div>
+          <p className="mt-1 text-xs text-muted">
+            You can see everyone else&apos;s picks for this episode before locking in your own.
+          </p>
+          {otherUserPicks.length === 0 ? (
+            <p className="mt-3 text-sm text-muted">No one else has made picks for this episode yet.</p>
+          ) : (
+            <div className="mt-3 space-y-3">
+              {otherUserPicks.map((group) => (
+                <div key={group.user_id} className="flex items-start gap-3">
+                  <span className="w-20 shrink-0 pt-2 text-sm font-display text-gold">
+                    {group.user_name}
+                  </span>
+                  <div className="flex flex-wrap gap-3">
+                    {group.picks.map((p) => (
+                      <div
+                        key={p.survivor_id}
+                        className="relative"
+                        title={`${p.survivor_name} (${p.multiplier}×)`}
+                      >
+                        <SurvivorAvatar name={p.survivor_name} photoUrl={p.photo_url} className="h-12 w-12" />
+                        <span className="absolute -bottom-1 -right-1 rounded-full bg-ember px-1.5 py-0.5 text-[10px] font-display leading-none text-jungle">
+                          {p.multiplier}×
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {budget && (
         <div className="sticky top-2 z-20 mt-8 rounded-md border border-surface2 bg-surface px-5 py-4 shadow-lg shadow-black/40">
@@ -537,6 +617,18 @@ export default function PicksPage() {
                       </span>
                     )}
                   </div>
+
+                  {user.is_handicap && otherPicksBySurvivor.has(s.id) && (
+                    <p className="mt-2 text-[11px] text-gold">
+                      Picked by{" "}
+                      {(() => {
+                        const pickers = otherPicksBySurvivor.get(s.id)!;
+                        const names = pickers.slice(0, 2).map((p) => p.user_name);
+                        const extra = pickers.length - names.length;
+                        return extra > 0 ? `${names.join(", ")} +${extra} more` : names.join(", ");
+                      })()}
+                    </p>
+                  )}
 
                   {!s.is_host && (
                     <div className="mt-2 flex flex-wrap gap-1.5">

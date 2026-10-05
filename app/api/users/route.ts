@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("id, name, is_admin")
+    .select("id, name, is_admin, is_handicap")
     .order("name", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
   const { data: existing } = await supabaseAdmin
     .from("users")
-    .select("id, name, is_admin")
+    .select("id, name, is_admin, is_handicap")
     .ilike("name", name)
     .maybeSingle();
 
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
   const { data, error } = await supabaseAdmin
     .from("users")
     .insert({ name })
-    .select("id, name, is_admin")
+    .select("id, name, is_admin, is_handicap")
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
