@@ -36,11 +36,11 @@ interface TriggerDefinition {
   action: TriggerAction;
 }
 
-// The 21 standard trigger event types. The Scoring Guide page's CSV upload
-// requires these exact (category, name) pairs as its first 21 rows,
-// in this exact order — point_value is free to differ per season, but the
-// category/name/order must match, or the upload is rejected. See
-// app/api/admin/event-types-csv/route.ts for the check.
+// The 21 standard trigger event types. Their (category, name) pairs are
+// load-bearing — the trigger engine looks them up by that exact string
+// match — so the Scoring Guide's per-category Edit mode blocks removing
+// any of these (point_value is still freely editable). See
+// app/api/admin/event-types/[id]/route.ts's DELETE handler.
 export const EVENT_TRIGGERS: TriggerDefinition[] = [
   {
     category: "Advantages",

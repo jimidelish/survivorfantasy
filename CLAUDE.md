@@ -77,11 +77,13 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   (category, name) pairs that, beyond just logging, also automatically
   change the survivor's row (add/mark-used an advantage, set `eliminated`,
   change `has_vote`). Trigger identity and behavior are hardcoded in code
-  — never parsed from the uploaded CSV — because free-text "what this does"
-  can't safely become executable logic. `event_types_s{N}.csv` uploads
-  (Admin > Event Type Setup) are rejected unless their first 21 rows are
-  exactly these (category, name) pairs, in this exact order (only
-  `point_value` may differ). What actually changed is recorded on
+  — never parsed from admin-entered data — because free-text "what this
+  does" can't safely become executable logic. The Scoring Guide's
+  per-category Edit mode (`DELETE /api/admin/event-types/[id]`) refuses to
+  remove any of these 21 (category, name) pairs for the same reason
+  removing one would silently break elimination/advantage logging;
+  `point_value` is still freely editable for them. What actually changed is
+  recorded on
   `events.trigger_effect` (jsonb) so Undo and "Clear all events"
   (`lib/triggerEngine.ts`'s `reverseTriggerEffect`) can reverse precisely
   that, not just guess at current state. One trigger — "Advantage Given
@@ -174,12 +176,17 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   picker above it, which only drives episodes/picks). A **Lock/Unlock
   winner picks** button (`PATCH /api/admin/seasons/[id]`) also lives here,
   toggling `winner_picks_locked` for whichever season is selected.
-- **Event Type Setup no longer exists as a tab** — sunset in favor of the
-  public `/scoring` (Scoring Guide) page, which does everything it did
-  (same `event_types_s{N}.csv` upload, same `POST /api/admin/event-types-csv`
-  endpoint and full-replace/21-trigger-validation behavior) plus inline
-  per-row point-value editing (`PATCH /api/admin/event-types/[id]`) for
-  admins, visible to everyone else as a read-only reference.
+- **Event Type Setup no longer exists as a tab, and the Scoring Guide no
+  longer has a CSV upload either** — scoring changes are made directly on
+  the public `/scoring` page. Each category heading gets an admin-only
+  **Edit** button; while a category is in edit mode, admins can tweak point
+  values inline (same staged-edits-then-"Save changes" flow as before,
+  `PATCH /api/admin/event-types/[id]`), add a new event type to that
+  category (`POST /api/admin/event-types`, upserts on (category, name) so
+  re-adding a removed one reactivates its original row), or remove one
+  (soft-delete via the same `DELETE /api/admin/event-types/[id]` — blocked
+  for the 21 trigger event types, see above). Outside edit mode, or for
+  non-admins, point values render as plain text exactly like before.
 - **Update Survivors**: per-survivor eliminated / current tribe (dropdown,
   populated from Assign Tribes) / advantages (including granting/using Shot
   in the Dark, just like any other advantage type), all saved immediately
@@ -189,7 +196,8 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   added dependency) to set `current_tribe_id`. Used for starting tribes,
   mid-season swaps, and the merge — all just "tribes," no special merge
   concept in the data model.
-- Templates for both CSVs are in `/templates`.
+- A template for the survivors CSV (the only remaining admin CSV upload) is
+  in `/templates`.
 
 ## Design system
 

@@ -249,17 +249,18 @@ Scores and Home actually display as real standings.
 - **Scoring Guide (`/scoring`)** — open to everyone, not just signed-in
   users: a read-only reference of every active event type, grouped by
   category, showing what it's worth (positive in gold, negative in rust).
-  For admins, each point value becomes an inline-editable field (a Save
-  button appears once changed) via `PATCH /api/admin/event-types/[id]`, and
-  a CSV upload section appears below the table for bulk balance changes —
-  this replaced the Admin page's old "Event Type Setup" tab entirely,
-  including its full-replace behavior and the same
-  `event_types_s{season}.csv` filename convention. **The first 21 rows of
-  that CSV are required and order-sensitive** — these are the "trigger"
-  events (see Episode Events above), and the upload is rejected unless their
-  `category` and `name` exactly match the standard trigger list, in that
-  exact order (only `point_value` is free to change per season). Everything
-  after row 21 is completely free-form. See `lib/eventTriggers.ts` for the
+  Admins get an **Edit** button on each category heading; while that
+  category is in edit mode, its point values become inline-editable fields
+  (a Save button appears once changed, via `PATCH /api/admin/event-types/[id]`),
+  and the admin can add a new event type to that category
+  (`POST /api/admin/event-types`) or remove one (`DELETE` on the same
+  `[id]` route, a soft-delete that keeps the row — and any past events'
+  recorded points — but hides it going forward). Outside edit mode, or for
+  non-admins, point values are plain read-only text. **Removal is blocked
+  for the 21 standard "trigger" event types** (see Episode Events above) —
+  their exact `category`/`name` pairs are how the trigger engine finds them,
+  so deleting one would silently break elimination/advantage logging; their
+  point values are still freely editable. See `lib/eventTriggers.ts` for the
   full list and what each one does.
 
 ---
@@ -329,8 +330,8 @@ app/
     users/                                  Name-based login
     admin/verify-password/                    Shared admin passphrase check
     admin/survivors-csv/                     Season Setup CSV upload
-    admin/event-types-csv/                     Scoring Guide's bulk CSV upload (full replace)
-    admin/event-types/[id]/                      Scoring Guide's inline point-value edit
+    admin/event-types/                        Scoring Guide's "add event type" (upserts on category+name)
+    admin/event-types/[id]/                      Scoring Guide's inline point-value edit, and remove (soft-delete)
     admin/picks/                                   View picks by user (admin)
     admin/survivors/[id]/                           Update eliminated status/tribe
     admin/advantages/, admin/advantages/[id]/         Grant/mark-used/remove advantages
@@ -352,7 +353,6 @@ components/
   SurvivorAvatar.tsx               Photo w/ broken-image fallback (My Picks, Episode Events)
 templates/
   survivors_s51.csv        Example roster CSV
-  event_types_s51.csv        Example scoring CSV
 sql/
   schema.sql              Run once in Supabase; includes setup examples
 ```
