@@ -389,10 +389,7 @@ export default function PicksPage() {
 
       {user.is_handicap && (
         <div className="mt-6 rounded-md border border-gold/30 bg-surface px-5 py-4">
-          <div className="flex items-center justify-between">
-            <span className="font-display text-lg">Other players&apos; picks</span>
-            <span className="rounded-full bg-gold/20 px-3 py-1 text-xs text-gold">Handicap</span>
-          </div>
+          <span className="font-display text-lg">Other players&apos; picks</span>
           <p className="mt-1 text-xs text-muted">
             You can see everyone else&apos;s picks for this episode before locking in your own.
           </p>
@@ -406,7 +403,9 @@ export default function PicksPage() {
                     {group.user_name}
                   </span>
                   <div className="flex flex-wrap gap-3">
-                    {group.picks.map((p) => (
+                    {[...group.picks]
+                      .sort((a, b) => a.survivor_name.localeCompare(b.survivor_name))
+                      .map((p) => (
                       <div
                         key={p.survivor_id}
                         className="relative"
@@ -623,8 +622,11 @@ export default function PicksPage() {
                       Picked by{" "}
                       {(() => {
                         const pickers = otherPicksBySurvivor.get(s.id)!;
-                        const names = pickers.slice(0, 2).map((p) => p.user_name);
-                        const extra = pickers.length - names.length;
+                        const shown = pickers.slice(0, 2);
+                        const extra = pickers.length - shown.length;
+                        const names = shown.map((p) =>
+                          p.multiplier > 1 ? `${p.user_name} (${p.multiplier})` : p.user_name
+                        );
                         return extra > 0 ? `${names.join(", ")} +${extra} more` : names.join(", ");
                       })()}
                     </p>
