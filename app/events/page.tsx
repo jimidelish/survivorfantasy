@@ -10,7 +10,10 @@ import {
   SurvivorEvent,
   Tribe,
   LOCAL_STORAGE_KEY,
+  ADVANTAGE_COLORS,
+  AdvantageType,
 } from "@/lib/types";
+import { getTriggerAction } from "@/lib/eventTriggers";
 import SurvivorAvatar from "@/components/SurvivorAvatar";
 
 interface PendingTransfer {
@@ -337,29 +340,37 @@ export default function EventsPage() {
                   </span>
                   <span className="text-muted">{expanded ? "▲" : "▼"}</span>
                 </button>
-                {expanded && (
-                  <div className="grid grid-cols-2 gap-1 border-t border-surface2 px-3 py-2">
-                    {types.map((t) => {
-                      const checked = selectedEventTypeIds.has(t.id);
-                      return (
-                        <label
-                          key={t.id}
-                          className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
-                            checked ? "bg-surface text-parchment" : "text-muted hover:bg-surface"
-                          }`}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleEventType(t.id)}
-                            className="h-4 w-4 shrink-0"
-                          />
-                          {t.name} ({t.point_value > 0 ? "+" : ""}
-                          {t.point_value})
-                        </label>
-                      );
-                    })}
-                  </div>
+                {expanded && category === "Advantages" ? (
+                  <AdvantageCategoryBody
+                    types={types}
+                    selectedEventTypeIds={selectedEventTypeIds}
+                    onToggle={toggleEventType}
+                  />
+                ) : (
+                  expanded && (
+                    <div className="grid grid-cols-2 gap-1 border-t border-surface2 px-3 py-2">
+                      {types.map((t) => {
+                        const checked = selectedEventTypeIds.has(t.id);
+                        return (
+                          <label
+                            key={t.id}
+                            className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                              checked ? "bg-surface text-parchment" : "text-muted hover:bg-surface"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleEventType(t.id)}
+                              className="h-4 w-4 shrink-0"
+                            />
+                            {t.name} ({t.point_value > 0 ? "+" : ""}
+                            {t.point_value})
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )
                 )}
               </div>
             );
@@ -585,4 +596,129 @@ function AdvantageTransferModal({
       </div>
     </div>
   );
+}
+
+// Groups advantage event types by the part of their name before " - " (e.g.
+// "Block a Vote - Obtains" / "Block a Vote - Uses" become one "Block a
+// Vote" group with "- Obtains"/"- Uses" entries) into colored pills, so the
+// Advantages category reads as a handful of advantage types rather than a
+// flat alphabetical list. Event types that don't follow that "X - Y"
+// pattern (e.g. "Finds Advantage Clue", admin-added ones with no fixed
+// shape) just render as plain checkboxes below, same as every other
+// category.
+function AdvantageCategoryBody({
+  types,
+  selectedEventTypeIds,
+  onToggle,
+}: {
+  types: EventType[];
+  selectedEventTypeIds: Set<string>;
+  onToggle: (id: string) => void;
+}) {
+  const groupMap = new Map<string, { suffix: string; t: EventType }[]>();
+  const standalone: EventType[] = [];
+
+  for (const t of types) {
+    const idx = t.name.indexOf(" - ");
+    if (idx === -1) {
+      standalone.push(t);
+      continue;
+    }
+    const prefix = t.name.slice(0, idx);
+    const suffix = t.name.slice(idx + 3);
+    if (!groupMap.has(prefix)) groupMap.set(prefix, []);
+    groupMap.get(prefix)!.push({ suffix, t });
+  }
+
+  const groups = Array.from(groupMap.entries())
+    .map(
+      ([prefix, items]) =>
+        [
+          prefix,
+          [...items].sort(
+            (a, b) => b.t.point_value - a.t.point_value || a.suffix.localeCompare(b.suffix)
+          ),
+        ] as [string, { suffix: string; t: EventType }[]]
+    )
+    .sort((a, b) => a[0].localeCompare(b[0]));
+
+  standalone.sort((a, b) => a.name.localeCompare(b.name));
+
+  return (
+    <div className="border-t border-surface2 px-3 py-3">
+      <div className="flex flex-wrap gap-6">
+        {groups.map(([prefix, items]) => (
+          <div key={prefix} className="min-w-[9rem]">
+            <span
+              className="inline-block rounded-full px-3 py-1 text-xs font-semibold text-jungle"
+              style={{ backgroundColor: advantagePillColor(items[0].t, prefix) }}
+            >
+              {prefix}
+            </span>
+            <div className="mt-2 space-y-1">
+              {items.map(({ suffix, t }) => {
+                const checked = selectedEventTypeIds.has(t.id);
+                return (
+                  <label
+                    key={t.id}
+                    className={`flex cursor-pointer items-center gap-2 py-0.5 text-sm ${
+                      checked ? "text-parchment" : "text-muted hover:text-parchment"
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => onToggle(t.id)}
+                      className="h-4 w-4 shrink-0"
+                    />
+                    - {suffix} ({t.point_value > 0 ? "+" : ""}
+                    {t.point_value})
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {standalone.length > 0 && (
+        <div className="mt-4 grid grid-cols-2 gap-1 border-t border-surface2 pt-3">
+          {standalone.map((t) => {
+            const checked = selectedEventTypeIds.has(t.id);
+            return (
+              <label
+                key={t.id}
+                className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                  checked ? "bg-surface text-parchment" : "text-muted hover:bg-surface"
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggle(t.id)}
+                  className="h-4 w-4 shrink-0"
+                />
+                {t.name} ({t.point_value > 0 ? "+" : ""}
+                {t.point_value})
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Matches the pill's color to the app's existing advantage color system
+// where possible — an exact prefix match (most of them: "Block a Vote",
+// "Extra Vote", "Beware Advantage", etc.) first, then falling back to the
+// trigger's own advantageType for names that don't match verbatim (e.g.
+// "Hidden Immunity Idol - Obtains" still resolves to the "Immunity Idol"
+// color via its trigger). Anything else (a custom advantage-category event
+// type with no matching trigger) gets a neutral fallback.
+function advantagePillColor(t: EventType, prefix: string): string {
+  if (prefix in ADVANTAGE_COLORS) return ADVANTAGE_COLORS[prefix as AdvantageType];
+  const action = getTriggerAction(t.category, t.name);
+  if (action && "advantageType" in action) return ADVANTAGE_COLORS[action.advantageType];
+  return "#8FA294";
 }
