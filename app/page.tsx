@@ -127,8 +127,8 @@ export default function HomePage() {
               >
                 <SurvivorAvatar name={p.survivor_name} photoUrl={p.photo_url} className="h-12 w-12" />
                 <div className="min-w-0">
-                  <p className="truncate text-xs text-muted">{p.user_name}</p>
-                  <p className="truncate font-display text-lg">{p.survivor_name}</p>
+                  <p className="truncate text-sm font-medium text-parchment">{p.user_name}</p>
+                  <p className="truncate font-display text-lg text-gold">{p.survivor_name}</p>
                 </div>
               </li>
             ))}
