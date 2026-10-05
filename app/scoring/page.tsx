@@ -156,6 +156,11 @@ export default function ScoringPage() {
 
   if (loading) return <p className="text-sm text-muted">Loading scoring guide…</p>;
 
+  // Only the open category can have entries here (toggleEdit discards any
+  // other category's drafts), so this alone is enough to block switching
+  // or closing out of unsaved point-value edits anywhere on the page.
+  const hasUnsavedChanges = Object.keys(pendingEdits).length > 0;
+
   return (
     <div>
       <h1 className="font-display text-3xl font-semibold">Scoring Guide</h1>
@@ -180,7 +185,13 @@ export default function ScoringPage() {
                   <button
                     type="button"
                     onClick={() => toggleEdit(category, types)}
-                    className={`rounded-full border px-3 py-1 text-xs ${
+                    disabled={hasUnsavedChanges}
+                    title={
+                      hasUnsavedChanges
+                        ? "Save or discard your unsaved point-value changes first"
+                        : undefined
+                    }
+                    className={`rounded-full border px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${
                       editing
                         ? "border-gold bg-gold/10 text-gold"
                         : "border-surface2 text-muted hover:border-gold/50"
