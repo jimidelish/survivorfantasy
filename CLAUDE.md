@@ -79,11 +79,11 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   change `has_vote`). Trigger identity and behavior are hardcoded in code
   — never parsed from admin-entered data — because free-text "what this
   does" can't safely become executable logic. The Scoring Guide's
-  per-category Edit mode (`DELETE /api/admin/event-types/[id]`) refuses to
-  remove any of these 21 (category, name) pairs for the same reason
-  removing one would silently break elimination/advantage logging;
-  `point_value` is still freely editable for them. What actually changed is
-  recorded on
+  per-category Edit mode (`PATCH`/`DELETE /api/admin/event-types/[id]`)
+  refuses to rename or remove any of these 21 (category, name) pairs for
+  the same reason doing either would silently break elimination/advantage
+  logging; `point_value` is still freely editable for them. What actually
+  changed is recorded on
   `events.trigger_effect` (jsonb) so Undo and "Clear all events"
   (`lib/triggerEngine.ts`'s `reverseTriggerEffect`) can reverse precisely
   that, not just guess at current state. One trigger — "Advantage Given
@@ -180,13 +180,17 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   longer has a CSV upload either** — scoring changes are made directly on
   the public `/scoring` page. Each category heading gets an admin-only
   **Edit** button; while a category is in edit mode, admins can tweak point
-  values inline (same staged-edits-then-"Save changes" flow as before,
-  `PATCH /api/admin/event-types/[id]`), add a new event type to that
-  category (`POST /api/admin/event-types`, upserts on (category, name) so
-  re-adding a removed one reactivates its original row), or remove one
-  (soft-delete via the same `DELETE /api/admin/event-types/[id]` — blocked
-  for the 21 trigger event types, see above). Outside edit mode, or for
-  non-admins, point values render as plain text exactly like before.
+  values and/or names inline (`PATCH /api/admin/event-types/[id]`), add a
+  new event type to that category (`POST /api/admin/event-types`, upserts
+  on (category, name) so re-adding a removed one reactivates its original
+  row), or remove one (soft-delete via the same
+  `DELETE /api/admin/event-types/[id]`) — renaming/removing is blocked for
+  the 21 trigger event types, see above. All of it (point-value edits,
+  renames, adds, removals) is staged client-side and only hits the API on
+  "Save changes"; only one category can be in edit mode at a time, and its
+  Edit/Done button is disabled while it has unsaved staged changes. Outside
+  edit mode, or for non-admins, everything renders as plain text exactly
+  like before.
 - **Update Survivors**: per-survivor eliminated / current tribe (dropdown,
   populated from Assign Tribes) / advantages (including granting/using Shot
   in the Dark, just like any other advantage type), all saved immediately

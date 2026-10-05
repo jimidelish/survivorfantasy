@@ -250,18 +250,23 @@ Scores and Home actually display as real standings.
   users: a read-only reference of every active event type, grouped by
   category, showing what it's worth (positive in gold, negative in rust).
   Admins get an **Edit** button on each category heading; while that
-  category is in edit mode, its point values become inline-editable fields
-  (a Save button appears once changed, via `PATCH /api/admin/event-types/[id]`),
-  and the admin can add a new event type to that category
-  (`POST /api/admin/event-types`) or remove one (`DELETE` on the same
-  `[id]` route, a soft-delete that keeps the row — and any past events'
-  recorded points — but hides it going forward). Outside edit mode, or for
-  non-admins, point values are plain read-only text. **Removal is blocked
-  for the 21 standard "trigger" event types** (see Episode Events above) —
-  their exact `category`/`name` pairs are how the trigger engine finds them,
-  so deleting one would silently break elimination/advantage logging; their
-  point values are still freely editable. See `lib/eventTriggers.ts` for the
-  full list and what each one does.
+  category is in edit mode, its point values and names become
+  inline-editable fields, and the admin can add a new event type to that
+  category (`POST /api/admin/event-types`) or remove one (`DELETE` on
+  `/api/admin/event-types/[id]`, a soft-delete that keeps the row — and
+  any past events' recorded points — but hides it going forward).
+  Everything (point-value edits, renames, adds, removals) is staged
+  locally and only hits the API when you click **Save changes**
+  (`PATCH /api/admin/event-types/[id]` for edits/renames); only one
+  category can be in edit mode at a time, and you can't close it or switch
+  to another while it has unsaved changes. Outside edit mode, or for
+  non-admins, everything is plain read-only text. **Renaming and removal
+  are both blocked for the 21 standard "trigger" event types** (see
+  Episode Events above) — their exact `category`/`name` pairs are how the
+  trigger engine finds them, so changing either would silently break
+  elimination/advantage logging; their point values are still freely
+  editable. See `lib/eventTriggers.ts` for the full list and what each one
+  does.
 
 ---
 

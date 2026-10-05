@@ -16,10 +16,11 @@ export default function ScoringPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // All three of these are staged — nothing actually hits the API until
-  // Save changes is clicked, consistent across point-value edits, adds,
-  // and removals.
+  // All of these are staged — nothing actually hits the API until Save
+  // changes is clicked, consistent across point-value edits, renames,
+  // adds, and removals.
   const [pendingEdits, setPendingEdits] = useState<Record<string, number>>({});
+  const [pendingNames, setPendingNames] = useState<Record<string, string>>({});
   const [pendingNewTypes, setPendingNewTypes] = useState<Record<string, NewTypeDraft[]>>({});
   const [pendingRemovals, setPendingRemovals] = useState<Set<string>>(new Set());
 
@@ -70,15 +71,28 @@ export default function ScoringPage() {
     });
   }
 
+  function setPendingName(id: string, value: string | undefined) {
+    setPendingNames((prev) => {
+      const next = { ...prev };
+      if (value === undefined) delete next[id];
+      else next[id] = value;
+      return next;
+    });
+  }
+
   async function saveChanges() {
     setSaving(true);
-    const patches = Object.entries(pendingEdits).map(([id, pointValue]) =>
-      fetch(`/api/admin/event-types/${id}`, {
+    const patchIds = new Set([...Object.keys(pendingEdits), ...Object.keys(pendingNames)]);
+    const patches = Array.from(patchIds).map((id) => {
+      const body: { point_value?: number; name?: string } = {};
+      if (pendingEdits[id] !== undefined) body.point_value = pendingEdits[id];
+      if (pendingNames[id] !== undefined) body.name = pendingNames[id];
+      return fetch(`/api/admin/event-types/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ point_value: pointValue }),
-      })
-    );
+        body: JSON.stringify(body),
+      });
+    });
     const creates = Object.entries(pendingNewTypes).flatMap(([category, drafts]) =>
       drafts.map((d) =>
         fetch("/api/admin/event-types", {
@@ -93,6 +107,7 @@ export default function ScoringPage() {
     );
     await Promise.all([...patches, ...creates, ...deletes]);
     setPendingEdits({});
+    setPendingNames({});
     setPendingNewTypes({});
     setPendingRemovals(new Set());
     setSaving(false);
@@ -119,6 +134,11 @@ export default function ScoringPage() {
   function discardPendingFor(category: string, types: EventType[]) {
     setPendingEdits((pe) => {
       const copy = { ...pe };
+      for (const t of types) delete copy[t.id];
+      return copy;
+    });
+    setPendingNames((pn) => {
+      const copy = { ...pn };
       for (const t of types) delete copy[t.id];
       return copy;
     });
@@ -189,6 +209,7 @@ export default function ScoringPage() {
   // block switching or closing out of unsaved changes anywhere on the page.
   const hasUnsavedChanges =
     Object.keys(pendingEdits).length > 0 ||
+    Object.keys(pendingNames).length > 0 ||
     Object.values(pendingNewTypes).some((list) => list.length > 0) ||
     pendingRemovals.size > 0;
 
@@ -198,7 +219,7 @@ export default function ScoringPage() {
       <p className="mt-2 text-sm text-muted">
         How survivors earn (or lose) points during an episode.
         {user?.is_admin &&
-          " Click Edit on a category to change its point values, or add/remove event types."}
+          " Click Edit on a category to change its point values or names, or add/remove event types."}
       </p>
 
       {actionError && <p className="mt-4 text-sm text-rust">{actionError}</p>}
@@ -207,8 +228,12 @@ export default function ScoringPage() {
         {grouped.map(([category, types]) => {
           const newDrafts = pendingNewTypes[category] ?? [];
           const categoryHasChanges =
-            types.some((t) => pendingEdits[t.id] !== undefined || pendingRemovals.has(t.id)) ||
-            newDrafts.length > 0;
+            types.some(
+              (t) =>
+                pendingEdits[t.id] !== undefined ||
+                pendingNames[t.id] !== undefined ||
+                pendingRemovals.has(t.id)
+            ) || newDrafts.length > 0;
           const editing = editingCategory === category;
           const input = newTypeInput[category];
           return (
@@ -244,6 +269,8 @@ export default function ScoringPage() {
                     editable={editing}
                     pendingValue={pendingEdits[t.id]}
                     onChange={setPendingValue}
+                    pendingName={pendingNames[t.id]}
+                    onChangeName={setPendingName}
                     onToggleRemove={editing ? () => toggleRemoval(t.id) : undefined}
                     pendingRemoval={pendingRemovals.has(t.id)}
                     isProtected={!!getTriggerAction(t.category, t.name)}
@@ -323,6 +350,8 @@ function ScoringRow({
   editable,
   pendingValue,
   onChange,
+  pendingName,
+  onChangeName,
   onToggleRemove,
   pendingRemoval,
   isProtected,
@@ -331,15 +360,22 @@ function ScoringRow({
   editable: boolean;
   pendingValue: number | undefined;
   onChange: (id: string, value: number | undefined) => void;
+  pendingName: string | undefined;
+  onChangeName: (id: string, value: string | undefined) => void;
   onToggleRemove?: () => void;
   pendingRemoval?: boolean;
   isProtected?: boolean;
 }) {
   const [text, setText] = useState(String(pendingValue ?? eventType.point_value));
+  const [nameText, setNameText] = useState(pendingName ?? eventType.name);
 
   useEffect(() => {
     setText(String(pendingValue ?? eventType.point_value));
   }, [eventType.point_value, pendingValue]);
+
+  useEffect(() => {
+    setNameText(pendingName ?? eventType.name);
+  }, [eventType.name, pendingName]);
 
   function handleChange(v: string) {
     setText(v);
@@ -351,7 +387,17 @@ function ScoringRow({
     }
   }
 
-  const dirty = pendingValue !== undefined;
+  function handleNameChange(v: string) {
+    setNameText(v);
+    const trimmed = v.trim();
+    if (trimmed !== "" && trimmed !== eventType.name) {
+      onChangeName(eventType.id, trimmed);
+    } else {
+      onChangeName(eventType.id, undefined);
+    }
+  }
+
+  const dirty = pendingValue !== undefined || pendingName !== undefined;
   const positive = eventType.point_value > 0;
   const negative = eventType.point_value < 0;
 
@@ -365,9 +411,21 @@ function ScoringRow({
           : "border-surface2 bg-surface"
       }`}
     >
-      <span className={`text-sm text-parchment ${pendingRemoval ? "line-through" : ""}`}>
-        {eventType.name}
-      </span>
+      {editable && !isProtected && !pendingRemoval ? (
+        <input
+          type="text"
+          value={nameText}
+          onChange={(e) => handleNameChange(e.target.value)}
+          className="min-w-0 flex-1 rounded-md border border-surface2 bg-surface2 px-2 py-1 text-sm"
+        />
+      ) : (
+        <span
+          className={`truncate text-sm text-parchment ${pendingRemoval ? "line-through" : ""}`}
+          title={isProtected && editable ? "Required by built-in game logic — can't be renamed" : undefined}
+        >
+          {eventType.name}
+        </span>
+      )}
       <div className="flex shrink-0 items-center gap-2">
         {pendingRemoval ? (
           <span className="text-xs text-rust">Removing</span>
