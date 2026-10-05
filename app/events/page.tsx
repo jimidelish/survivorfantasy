@@ -42,6 +42,10 @@ export default function EventsPage() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [pendingTransfers, setPendingTransfers] = useState<PendingTransfer[]>([]);
 
+  const [eventFilter, setEventFilter] = useState<"all" | "mypicks" | "survivor">("all");
+  const [filterSurvivorId, setFilterSurvivorId] = useState("");
+  const [myPickSurvivorIds, setMyPickSurvivorIds] = useState<Set<string>>(new Set());
+
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
@@ -73,9 +77,30 @@ export default function EventsPage() {
     fetch(`/api/events?episode_id=${episodeId}`)
       .then((r) => r.json())
       .then(setEvents);
+    // Reset the filter when switching episodes — "My picks"/a specific
+    // survivor carried over from a different episode isn't meaningful.
+    setEventFilter("all");
+    setFilterSurvivorId("");
   }, [episodeId]);
 
+  useEffect(() => {
+    if (!user || !episodeId) return;
+    fetch(`/api/picks?user_id=${user.id}&episode_id=${episodeId}`)
+      .then((r) => r.json())
+      .then((data: { survivor_id: string }[]) =>
+        setMyPickSurvivorIds(new Set(data.map((p) => p.survivor_id)))
+      );
+  }, [user, episodeId]);
+
   const currentEpisode = episodes.find((e) => e.id === episodeId);
+
+  const filteredEvents = useMemo(() => {
+    if (eventFilter === "mypicks") return events.filter((ev) => myPickSurvivorIds.has(ev.survivor_id));
+    if (eventFilter === "survivor" && filterSurvivorId) {
+      return events.filter((ev) => ev.survivor_id === filterSurvivorId);
+    }
+    return events;
+  }, [events, eventFilter, filterSurvivorId, myPickSurvivorIds]);
 
   const groupedEventTypes = useMemo(() => {
     const groups = new Map<string, EventType[]>();
@@ -407,7 +432,7 @@ export default function EventsPage() {
       )}
 
       <div className="mt-10">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-xl font-semibold">Events this episode</h2>
           {user.is_admin && events.length > 0 && (
             <button onClick={clearAllEvents} className="text-xs text-rust hover:underline">
@@ -415,11 +440,42 @@ export default function EventsPage() {
             </button>
           )}
         </div>
+
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <select
+            value={eventFilter}
+            onChange={(e) => setEventFilter(e.target.value as typeof eventFilter)}
+            className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
+          >
+            <option value="all">All events</option>
+            <option value="mypicks">My picks this episode</option>
+            <option value="survivor">A specific survivor</option>
+          </select>
+          {eventFilter === "survivor" && (
+            <select
+              value={filterSurvivorId}
+              onChange={(e) => setFilterSurvivorId(e.target.value)}
+              className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
+            >
+              <option value="">Choose a survivor…</option>
+              {[...survivors]
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+            </select>
+          )}
+        </div>
+
         {events.length === 0 ? (
           <p className="mt-3 text-sm text-muted">Nothing logged yet.</p>
+        ) : filteredEvents.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No events match this filter.</p>
         ) : (
           <ul className="mt-3 divide-y divide-surface2">
-            {events.map((ev) => (
+            {filteredEvents.map((ev) => (
               <li key={ev.id} className="flex items-center justify-between py-3">
                 <span className="text-sm">
                   <span className="text-parchment">{ev.survivors?.name}</span>
