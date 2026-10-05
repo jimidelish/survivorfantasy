@@ -2,11 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { LeaderboardRow, Season } from "@/lib/types";
+import SurvivorAvatar from "@/components/SurvivorAvatar";
+
+interface WinnerPickRow {
+  user_id: string;
+  user_name: string;
+  survivor_id: string;
+  survivor_name: string;
+  photo_url: string | null;
+}
 
 export default function HomePage() {
   const [season, setSeason] = useState<Season | null>(null);
   const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [winnerPicksRevealed, setWinnerPicksRevealed] = useState(false);
+  const [winnerPicks, setWinnerPicks] = useState<WinnerPickRow[] | null>(null);
+  const [winnerPicksLoading, setWinnerPicksLoading] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -19,6 +32,18 @@ export default function HomePage() {
       })
       .finally(() => setLoading(false));
   }, []);
+
+  function toggleWinnerPicks() {
+    const next = !winnerPicksRevealed;
+    setWinnerPicksRevealed(next);
+    if (next && winnerPicks === null) {
+      setWinnerPicksLoading(true);
+      fetch("/api/winner-pick/all")
+        .then((r) => r.json())
+        .then(setWinnerPicks)
+        .finally(() => setWinnerPicksLoading(false));
+    }
+  }
 
   return (
     <div>
@@ -61,6 +86,53 @@ export default function HomePage() {
               </li>
             ))}
           </ol>
+        )}
+      </div>
+
+      <div className="mt-12">
+        <div className="flex items-center justify-between gap-4">
+          <h2 className="font-display text-2xl font-semibold">Winner picks</h2>
+          {season?.winner_picks_locked && (
+            <button
+              type="button"
+              onClick={toggleWinnerPicks}
+              className="shrink-0 rounded-full border border-gold/50 px-4 py-1.5 text-xs text-gold hover:bg-gold/10"
+            >
+              {winnerPicksRevealed ? "Hide" : "Show"} winner picks
+            </button>
+          )}
+        </div>
+        <div className="mt-4 rope-divider" />
+
+        {!season?.winner_picks_locked ? (
+          <p className="mt-6 text-sm text-muted">
+            Winner picks haven&apos;t been locked in yet — they&apos;ll be revealed here once the
+            admin locks them.
+          </p>
+        ) : !winnerPicksRevealed ? (
+          <p className="mt-6 text-sm text-muted">
+            Who everyone&apos;s betting on to take the season — hidden by default so it doesn&apos;t
+            spoil anyone&apos;s strategy. Click above to reveal.
+          </p>
+        ) : winnerPicksLoading ? (
+          <p className="mt-6 text-sm text-muted">Loading winner picks…</p>
+        ) : !winnerPicks || winnerPicks.length === 0 ? (
+          <p className="mt-6 text-sm text-muted">No one has locked in a winner pick yet.</p>
+        ) : (
+          <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+            {winnerPicks.map((p) => (
+              <li
+                key={p.user_id}
+                className="flex items-center gap-3 rounded-md border border-surface2 bg-surface px-4 py-3"
+              >
+                <SurvivorAvatar name={p.survivor_name} photoUrl={p.photo_url} className="h-12 w-12" />
+                <div className="min-w-0">
+                  <p className="truncate text-xs text-muted">{p.user_name}</p>
+                  <p className="truncate font-display text-lg">{p.survivor_name}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </div>
