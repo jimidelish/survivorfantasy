@@ -11,7 +11,7 @@ export default function ScoringPage() {
   const [pendingEdits, setPendingEdits] = useState<Record<string, number>>({});
   const [saving, setSaving] = useState(false);
 
-  const [editingCategories, setEditingCategories] = useState<Set<string>>(new Set());
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
   const [newTypeDrafts, setNewTypeDrafts] = useState<Record<string, { name: string; pointValue: string }>>(
     {}
   );
@@ -76,22 +76,28 @@ export default function ScoringPage() {
     refresh();
   }
 
+  // Only one category editable at a time — opening a new one closes
+  // (and discards unsaved drafts for) whichever was open, same as
+  // explicitly clicking "Done" on it.
   function toggleEdit(category: string, types: EventType[]) {
-    setEditingCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(category)) {
-        next.delete(category);
-        // Discard any unsaved point-value drafts for this category when
-        // leaving edit mode, rather than leaving them staged but hidden.
-        setPendingEdits((pe) => {
-          const copy = { ...pe };
-          for (const t of types) delete copy[t.id];
-          return copy;
-        });
-      } else {
-        next.add(category);
+    setEditingCategory((prev) => {
+      if (prev === category) {
+        discardPendingFor(types);
+        return null;
       }
-      return next;
+      if (prev) {
+        const prevTypes = grouped.find(([c]) => c === prev)?.[1] ?? [];
+        discardPendingFor(prevTypes);
+      }
+      return category;
+    });
+  }
+
+  function discardPendingFor(types: EventType[]) {
+    setPendingEdits((pe) => {
+      const copy = { ...pe };
+      for (const t of types) delete copy[t.id];
+      return copy;
     });
   }
 
@@ -150,60 +156,26 @@ export default function ScoringPage() {
 
   if (loading) return <p className="text-sm text-muted">Loading scoring guide…</p>;
 
-  const hasChanges = Object.keys(pendingEdits).length > 0;
-
   return (
     <div>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-3xl font-semibold">Scoring Guide</h1>
-          <p className="mt-2 text-sm text-muted">
-            How survivors earn (or lose) points during an episode.
-            {user?.is_admin &&
-              " Click Edit on a category to change its point values, or add/remove event types."}
-          </p>
-        </div>
-        {user?.is_admin && (
-          <div className="flex items-center gap-3">
-            <span className={`text-xs ${hasChanges ? "text-gold" : "text-muted"}`}>
-              {saving ? "Saving…" : hasChanges ? "Changes made" : "All saved"}
-            </span>
-            {hasChanges && (
-              <button
-                type="button"
-                onClick={saveChanges}
-                disabled={saving}
-                className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90 disabled:opacity-40"
-              >
-                {saving ? "Saving…" : "Save changes"}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+      <h1 className="font-display text-3xl font-semibold">Scoring Guide</h1>
+      <p className="mt-2 text-sm text-muted">
+        How survivors earn (or lose) points during an episode.
+        {user?.is_admin &&
+          " Click Edit on a category to change its point values, or add/remove event types."}
+      </p>
 
       {actionError && <p className="mt-4 text-sm text-rust">{actionError}</p>}
 
       <div className="mt-8 space-y-8">
         {grouped.map(([category, types]) => {
           const categoryHasChanges = types.some((t) => pendingEdits[t.id] !== undefined);
-          const editing = editingCategories.has(category);
+          const editing = editingCategory === category;
           const draft = newTypeDrafts[category];
           return (
             <div key={category}>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h2 className="font-display text-xl font-semibold text-gold">{category}</h2>
-                  {categoryHasChanges && (
-                    <button
-                      type="button"
-                      onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-                      className="text-xs text-gold underline hover:text-ember"
-                    >
-                      Changes made — save at top
-                    </button>
-                  )}
-                </div>
+                <h2 className="font-display text-xl font-semibold text-gold">{category}</h2>
                 {user?.is_admin && (
                   <button
                     type="button"
@@ -256,6 +228,20 @@ export default function ScoringPage() {
                     className="rounded-md bg-ember px-3 py-1.5 text-xs font-medium text-jungle hover:opacity-90 disabled:opacity-40"
                   >
                     {addingCategory === category ? "Adding…" : "Add event type"}
+                  </button>
+                </div>
+              )}
+
+              {editing && categoryHasChanges && (
+                <div className="mt-3 flex items-center gap-3">
+                  <span className="text-xs text-gold">{saving ? "Saving…" : "Unsaved changes"}</span>
+                  <button
+                    type="button"
+                    onClick={saveChanges}
+                    disabled={saving}
+                    className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90 disabled:opacity-40"
+                  >
+                    {saving ? "Saving…" : "Save changes"}
                   </button>
                 </div>
               )}
