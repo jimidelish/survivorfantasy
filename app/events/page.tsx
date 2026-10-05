@@ -42,8 +42,9 @@ export default function EventsPage() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [pendingTransfers, setPendingTransfers] = useState<PendingTransfer[]>([]);
 
-  const [eventFilter, setEventFilter] = useState<"all" | "mypicks" | "survivor">("all");
-  const [filterSurvivorId, setFilterSurvivorId] = useState("");
+  // "all", "mypicks", or a survivor id.
+  const [eventFilter, setEventFilter] = useState("all");
+  const [eventSort, setEventSort] = useState<"order" | "survivor">("order");
   const [myPickSurvivorIds, setMyPickSurvivorIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -80,7 +81,6 @@ export default function EventsPage() {
     // Reset the filter when switching episodes — "My picks"/a specific
     // survivor carried over from a different episode isn't meaningful.
     setEventFilter("all");
-    setFilterSurvivorId("");
   }, [episodeId]);
 
   useEffect(() => {
@@ -95,12 +95,24 @@ export default function EventsPage() {
   const currentEpisode = episodes.find((e) => e.id === episodeId);
 
   const filteredEvents = useMemo(() => {
-    if (eventFilter === "mypicks") return events.filter((ev) => myPickSurvivorIds.has(ev.survivor_id));
-    if (eventFilter === "survivor" && filterSurvivorId) {
-      return events.filter((ev) => ev.survivor_id === filterSurvivorId);
+    let list = events;
+    if (eventFilter === "mypicks") {
+      list = events.filter((ev) => myPickSurvivorIds.has(ev.survivor_id));
+    } else if (eventFilter !== "all") {
+      list = events.filter((ev) => ev.survivor_id === eventFilter);
     }
-    return events;
-  }, [events, eventFilter, filterSurvivorId, myPickSurvivorIds]);
+    if (eventSort === "survivor") {
+      list = [...list].sort((a, b) =>
+        (a.survivors?.name || "").localeCompare(b.survivors?.name || "")
+      );
+    }
+    return list;
+  }, [events, eventFilter, eventSort, myPickSurvivorIds]);
+
+  const filteredTotal = useMemo(
+    () => filteredEvents.reduce((sum, ev) => sum + ev.point_value, 0),
+    [filteredEvents]
+  );
 
   const groupedEventTypes = useMemo(() => {
     const groups = new Map<string, EventType[]>();
@@ -444,28 +456,35 @@ export default function EventsPage() {
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <select
             value={eventFilter}
-            onChange={(e) => setEventFilter(e.target.value as typeof eventFilter)}
+            onChange={(e) => setEventFilter(e.target.value)}
             className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
           >
             <option value="all">All events</option>
-            <option value="mypicks">My picks this episode</option>
-            <option value="survivor">A specific survivor</option>
+            <option value="mypicks">My picks</option>
+            {[...survivors]
+              .sort((a, b) => a.name.localeCompare(b.name))
+              .map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
           </select>
-          {eventFilter === "survivor" && (
-            <select
-              value={filterSurvivorId}
-              onChange={(e) => setFilterSurvivorId(e.target.value)}
-              className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
-            >
-              <option value="">Choose a survivor…</option>
-              {[...survivors]
-                .sort((a, b) => a.name.localeCompare(b.name))
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-            </select>
+
+          <span className="text-xs text-muted">Sort by:</span>
+          <select
+            value={eventSort}
+            onChange={(e) => setEventSort(e.target.value as typeof eventSort)}
+            className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
+          >
+            <option value="order">Event order</option>
+            <option value="survivor">Survivor name</option>
+          </select>
+
+          {eventFilter !== "all" && (
+            <span className="text-sm text-gold">
+              Total: {filteredTotal > 0 ? "+" : ""}
+              {filteredTotal}
+            </span>
           )}
         </div>
 
