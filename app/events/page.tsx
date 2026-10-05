@@ -480,7 +480,7 @@ export default function EventsPage() {
             <option value="survivor">Survivor name</option>
           </select>
 
-          {eventFilter !== "all" && (
+          {eventFilter !== "all" && eventFilter !== "mypicks" && (
             <span className="text-sm text-gold">
               Total: {filteredTotal > 0 ? "+" : ""}
               {filteredTotal}
