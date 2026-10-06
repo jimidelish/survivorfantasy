@@ -328,8 +328,13 @@ app/
                                           applying any trigger actions
     events/[id]/advantage-transfer/      Completes the "given/used for someone else" trigger
     picks/                             Get/submit picks
+    picks/all/                            Every user's picks for an episode, grouped, with survivor
+                                             photos — powers My Picks' handicap-only "Other players'
+                                             picks" panel and Admin's "Picks by user" (same component)
     picks/budget/                      Compute a user's multiplier budget
     winner-pick/                        Get/set a user's winner pick (current season)
+    winner-pick/all/                      Every user's winner pick for the current season, with
+                                             survivor photo — powers Home's spoiler-gated section
     points/                              Per-episode points, by user or survivor
     standings/                            Season-to-date leaderboard
     users/                                  Name-based login
@@ -337,7 +342,6 @@ app/
     admin/survivors-csv/                     Season Setup CSV upload
     admin/event-types/                        Scoring Guide's "add event type" (upserts on category+name)
     admin/event-types/[id]/                      Scoring Guide's inline point-value edit, and remove (soft-delete)
-    admin/picks/                                   View picks by user (admin)
     admin/survivors/[id]/                           Update eliminated status/tribe
     admin/advantages/, admin/advantages/[id]/         Grant/mark-used/remove advantages
     admin/tribes/, admin/tribes/[id]/                   Add/rename/recolor/delete tribes

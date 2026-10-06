@@ -11,6 +11,7 @@ import {
   ADVANTAGE_COLORS,
 } from "@/lib/types";
 import SurvivorAvatar from "@/components/SurvivorAvatar";
+import UserPicksList, { UserPicksGroup } from "@/components/UserPicksList";
 
 interface Budget {
   base: number;
@@ -24,12 +25,6 @@ interface Budget {
 interface SurvivorStatsResponse {
   episodes: { id: string; number: number; title: string | null }[];
   series: { id: string; points: Record<string, number> }[];
-}
-
-interface UserPicksGroup {
-  user_id: string;
-  user_name: string;
-  picks: { survivor_id: string; survivor_name: string; photo_url: string | null; multiplier: number }[];
 }
 
 export default function PicksPage() {
@@ -393,40 +388,10 @@ export default function PicksPage() {
           <p className="mt-1 text-xs text-muted">
             You can see everyone else&apos;s picks for this episode before locking in your own.
           </p>
-          {otherUserPicks.length === 0 ? (
-            <p className="mt-3 text-sm text-muted">No one else has made picks for this episode yet.</p>
-          ) : (
-            <div className="mt-3 space-y-3">
-              {otherUserPicks.map((group) => (
-                <div key={group.user_id} className="flex items-start gap-3">
-                  <span className="w-20 shrink-0 pt-2 text-sm font-display text-gold">
-                    {group.user_name}
-                  </span>
-                  <div className="flex flex-wrap gap-3">
-                    {[...group.picks]
-                      .sort((a, b) => {
-                        const countA = otherPicksBySurvivor.get(a.survivor_id)?.length ?? 0;
-                        const countB = otherPicksBySurvivor.get(b.survivor_id)?.length ?? 0;
-                        if (countB !== countA) return countB - countA;
-                        return a.survivor_name.localeCompare(b.survivor_name);
-                      })
-                      .map((p) => (
-                      <div
-                        key={p.survivor_id}
-                        className="relative"
-                        title={`${p.survivor_name} (${p.multiplier}×)`}
-                      >
-                        <SurvivorAvatar name={p.survivor_name} photoUrl={p.photo_url} className="h-12 w-12" />
-                        <span className="absolute -bottom-1 -right-1 rounded-full bg-ember px-1.5 py-0.5 text-[10px] font-display leading-none text-jungle">
-                          {p.multiplier}×
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <UserPicksList
+            groups={otherUserPicks}
+            emptyMessage="No one else has made picks for this episode yet."
+          />
         </div>
       )}
 

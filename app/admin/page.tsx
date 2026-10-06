@@ -11,14 +11,9 @@ import {
   LOCAL_STORAGE_KEY,
 } from "@/lib/types";
 import CsvUpload from "@/components/CsvUpload";
+import UserPicksList, { UserPicksGroup } from "@/components/UserPicksList";
 
 type Tab = "control" | "updateSurvivors" | "assignTribes";
-
-interface UserPicksGroup {
-  user_id: string;
-  user_name: string;
-  picks: { survivor_name: string; multiplier: number }[];
-}
 
 export default function AdminPage() {
   const [user, setUser] = useState<AppUser | null>(null);
@@ -167,7 +162,7 @@ function SeasonControlTab() {
   useEffect(() => {
     if (!picksEpisodeId) return;
     setPicksLoading(true);
-    fetch(`/api/admin/picks?episode_id=${picksEpisodeId}`)
+    fetch(`/api/picks/all?episode_id=${picksEpisodeId}`)
       .then((r) => r.json())
       .then(setPicksGroups)
       .finally(() => setPicksLoading(false));
@@ -364,19 +359,8 @@ function SeasonControlTab() {
 
       {picksLoading ? (
         <p className="mt-4 text-sm text-muted">Loading picks…</p>
-      ) : picksGroups.length === 0 ? (
-        <p className="mt-4 text-sm text-muted">No picks submitted for this episode yet.</p>
       ) : (
-        <ul className="mt-4 space-y-4">
-          {picksGroups.map((g) => (
-            <li key={g.user_id} className="rounded-md border border-surface2 bg-surface px-4 py-3">
-              <p className="font-display">{g.user_name}</p>
-              <p className="mt-1 text-sm text-muted">
-                {g.picks.map((p) => `${p.survivor_name} (${p.multiplier}×)`).join(", ")}
-              </p>
-            </li>
-          ))}
-        </ul>
+        <UserPicksList groups={picksGroups} emptyMessage="No picks submitted for this episode yet." />
       )}
 
       <div className="mt-10 rope-divider" />
