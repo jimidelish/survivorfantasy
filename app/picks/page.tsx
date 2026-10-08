@@ -590,15 +590,12 @@ export default function PicksPage() {
                   {user.is_handicap && otherPicksBySurvivor.has(s.id) && (
                     <p className="mt-2 text-[11px] text-gold">
                       Picked by{" "}
-                      {(() => {
-                        const pickers = otherPicksBySurvivor.get(s.id)!;
-                        const shown = pickers.slice(0, 2);
-                        const extra = pickers.length - shown.length;
-                        const names = shown.map((p) =>
+                      {otherPicksBySurvivor
+                        .get(s.id)!
+                        .map((p) =>
                           p.multiplier > 1 ? `${p.user_name} (${p.multiplier})` : p.user_name
-                        );
-                        return extra > 0 ? `${names.join(", ")} +${extra} more` : names.join(", ");
-                      })()}
+                        )
+                        .join(", ")}
                     </p>
                   )}
 
