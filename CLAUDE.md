@@ -75,8 +75,9 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   of the app's admin gating.
 - **Trigger events** (`lib/eventTriggers.ts`) are a fixed set of 21
   (category, name) pairs that, beyond just logging, also automatically
-  change the survivor's row (add/mark-used an advantage, set `eliminated`,
-  change `has_vote`). Trigger identity and behavior are hardcoded in code
+  change the survivor's row (add/mark-used an advantage, set `eliminated`
+  — which also clears `current_tribe_id`, see below — change `has_vote`).
+  Trigger identity and behavior are hardcoded in code
   — never parsed from admin-entered data — because free-text "what this
   does" can't safely become executable logic. The Scoring Guide's
   per-category Edit mode (`PATCH`/`DELETE /api/admin/event-types/[id]`)
@@ -140,6 +141,15 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   trial-and-error dragging doesn't spam history with intermediate moves.
   Update Survivors' tribe dropdown is unaffected — it still saves
   immediately, same as everything else on that tab.
+  **Elimination clears `current_tribe_id`** (`set_eliminated` in
+  `lib/triggerEngine.ts`, reversed on Undo via the trigger effect's new
+  `previousTribeId`) — an eliminated survivor drops to "Unassigned" on
+  Assign Tribes rather than still occupying a tribe slot. No new history
+  entry is written for this (same rule as any other unassign-to-null), so
+  this is the one place `current_tribe_id` and "last entry in history"
+  deliberately diverge: My Picks' tribe chain still shows their last real
+  tribe, unstruck, as where they ended up, even though they're no longer
+  "on" it for Assign Tribes purposes.
 - **The host** (`survivors.is_host`, e.g. Jeff Probst) is a real
   `survivors` row — pickable on My Picks and scored per-season through the
   exact same picks/events machinery as any cast member — but never

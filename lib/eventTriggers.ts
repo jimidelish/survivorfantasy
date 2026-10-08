@@ -21,7 +21,7 @@ export type TriggerEffect =
   | { kind: "use_advantage"; advantageId: string }
   | { kind: "beware_accept"; advantageId: string; previousHasVote: boolean }
   | { kind: "beware_complete"; advantageId: string | null; previousHasVote: boolean }
-  | { kind: "set_eliminated"; previousEliminated: boolean }
+  | { kind: "set_eliminated"; previousEliminated: boolean; previousTribeId: string | null }
   | { kind: "lose_vote"; previousHasVote: boolean }
   | {
       kind: "advantage_transfer";

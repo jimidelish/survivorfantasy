@@ -75,16 +75,22 @@ export async function applyTrigger(
     case "set_eliminated": {
       const { data: survivor } = await supabaseAdmin
         .from("survivors")
-        .select("eliminated")
+        .select("eliminated, current_tribe_id")
         .eq("id", survivorId)
         .single();
       const previousEliminated = survivor?.eliminated ?? false;
+      const previousTribeId = survivor?.current_tribe_id ?? null;
+      // Elimination also unassigns their current tribe — an eliminated
+      // survivor is out of the game, not still occupying a tribe slot.
+      // No new survivor_tribe_history row is written for this (same as any
+      // other unassign-to-null): the chain's last real tribe stays
+      // displayed as their final one.
       const { error } = await supabaseAdmin
         .from("survivors")
-        .update({ eliminated: true })
+        .update({ eliminated: true, current_tribe_id: null })
         .eq("id", survivorId);
       if (error) return { effect: null, warning: `Couldn't mark eliminated: ${error.message}` };
-      return { effect: { kind: "set_eliminated", previousEliminated }, warning: null };
+      return { effect: { kind: "set_eliminated", previousEliminated, previousTribeId }, warning: null };
     }
 
     case "lose_vote": {
@@ -134,7 +140,7 @@ export async function reverseTriggerEffect(survivorId: string, effect: TriggerEf
     case "set_eliminated":
       await supabaseAdmin
         .from("survivors")
-        .update({ eliminated: effect.previousEliminated })
+        .update({ eliminated: effect.previousEliminated, current_tribe_id: effect.previousTribeId })
         .eq("id", survivorId);
       return;
 
