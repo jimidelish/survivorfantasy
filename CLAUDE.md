@@ -200,12 +200,7 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   "Save changes"; only one category can be in edit mode at a time, and its
   Edit/Done button is disabled while it has unsaved staged changes. Outside
   edit mode, or for non-admins, everything renders as plain text exactly
-  like before — except the Advantages category, which (outside edit mode)
-  uses the same colored-pill grouping as Episode Events' checkbox list
-  (`lib/advantageGrouping.ts`, shared by both) instead of a flat grid; edit
-  mode for Advantages falls back to the regular flat grid, since splitting
-  a pill's prefix from its "- suffix" for in-place renaming wasn't worth
-  the complexity.
+  like before.
 - **Update Survivors**: per-survivor eliminated / current tribe (dropdown,
   populated from Assign Tribes) / advantages (including granting/using Shot
   in the Dark, just like any other advantage type), all saved immediately

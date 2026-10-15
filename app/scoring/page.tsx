@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { AppUser, EventType, LOCAL_STORAGE_KEY } from "@/lib/types";
 import { getTriggerAction } from "@/lib/eventTriggers";
-import { groupAdvantageEventTypes, advantagePillColor } from "@/lib/advantageGrouping";
 
 interface NewTypeDraft {
   tempId: string;
@@ -262,47 +261,43 @@ export default function ScoringPage() {
                 )}
               </div>
               <div className="mt-3 rope-divider" />
-              {category === "Advantages" && !editing ? (
-                <AdvantageScoringDisplay types={types} />
-              ) : (
-                <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {types.map((t) => (
-                    <ScoringRow
-                      key={t.id}
-                      eventType={t}
-                      editable={editing}
-                      pendingValue={pendingEdits[t.id]}
-                      onChange={setPendingValue}
-                      pendingName={pendingNames[t.id]}
-                      onChangeName={setPendingName}
-                      onToggleRemove={editing ? () => toggleRemoval(t.id) : undefined}
-                      pendingRemoval={pendingRemovals.has(t.id)}
-                      isProtected={!!getTriggerAction(t.category, t.name)}
-                    />
-                  ))}
-                  {newDrafts.map((d) => (
-                    <div
-                      key={d.tempId}
-                      className="flex items-center justify-between gap-3 rounded-md border border-gold/50 bg-surface px-4 py-3"
-                    >
-                      <span className="text-sm text-parchment">
-                        {d.name} <span className="ml-1 text-[10px] text-gold">new</span>
-                      </span>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <span className="font-display text-sm text-gold">{d.pointValue}</span>
-                        <button
-                          type="button"
-                          onClick={() => unstageNewType(category, d.tempId)}
-                          title={`Remove staged ${d.name}`}
-                          className="h-6 w-6 shrink-0 rounded-full border border-surface2 text-xs text-rust hover:border-rust"
-                        >
-                          ×
-                        </button>
-                      </div>
+              <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {types.map((t) => (
+                  <ScoringRow
+                    key={t.id}
+                    eventType={t}
+                    editable={editing}
+                    pendingValue={pendingEdits[t.id]}
+                    onChange={setPendingValue}
+                    pendingName={pendingNames[t.id]}
+                    onChangeName={setPendingName}
+                    onToggleRemove={editing ? () => toggleRemoval(t.id) : undefined}
+                    pendingRemoval={pendingRemovals.has(t.id)}
+                    isProtected={!!getTriggerAction(t.category, t.name)}
+                  />
+                ))}
+                {newDrafts.map((d) => (
+                  <div
+                    key={d.tempId}
+                    className="flex items-center justify-between gap-3 rounded-md border border-gold/50 bg-surface px-4 py-3"
+                  >
+                    <span className="text-sm text-parchment">
+                      {d.name} <span className="ml-1 text-[10px] text-gold">new</span>
+                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="font-display text-sm text-gold">{d.pointValue}</span>
+                      <button
+                        type="button"
+                        onClick={() => unstageNewType(category, d.tempId)}
+                        title={`Remove staged ${d.name}`}
+                        className="h-6 w-6 shrink-0 rounded-full border border-surface2 text-xs text-rust hover:border-rust"
+                      >
+                        ×
+                      </button>
                     </div>
-                  ))}
-                </div>
-              )}
+                  </div>
+                ))}
+              </div>
 
               {editing && (
                 <div className="mt-3 flex flex-wrap items-center gap-2 rounded-md border border-dashed border-surface2 px-4 py-3">
@@ -346,74 +341,6 @@ export default function ScoringPage() {
           );
         })}
       </div>
-    </div>
-  );
-}
-
-// Read-only counterpart to Episode Events' AdvantageCategoryBody — same
-// grouping (lib/advantageGrouping), same colored pills, just plain text
-// instead of checkboxes, so admins editing elsewhere and everyone else see
-// the Advantages category laid out the same way. Edit mode falls back to
-// the regular flat grid below instead, since splitting a pill's prefix
-// from its "- suffix" for in-place renaming isn't worth the complexity.
-function AdvantageScoringDisplay({ types }: { types: EventType[] }) {
-  const { groups, standalone } = groupAdvantageEventTypes(types);
-
-  return (
-    <div className="mt-4">
-      <div className="flex flex-wrap gap-6">
-        {groups.map(([prefix, items]) => (
-          <div key={prefix} className="min-w-[9rem]">
-            <span
-              className="inline-block rounded-full px-3 py-1 text-xs font-semibold text-jungle"
-              style={{ backgroundColor: advantagePillColor(items[0].t, prefix) }}
-            >
-              {prefix}
-            </span>
-            <div className="mt-2 space-y-1">
-              {items.map(({ suffix, t }) => (
-                <p key={t.id} className="text-sm text-muted">
-                  - {suffix} (
-                  <span
-                    className={
-                      t.point_value > 0
-                        ? "text-gold"
-                        : t.point_value < 0
-                        ? "text-rust"
-                        : "text-muted"
-                    }
-                  >
-                    {t.point_value > 0 ? "+" : ""}
-                    {t.point_value}
-                  </span>
-                  )
-                </p>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {standalone.length > 0 && (
-        <div className="mt-4 grid gap-2 border-t border-surface2 pt-4 sm:grid-cols-2 lg:grid-cols-3">
-          {standalone.map((t) => (
-            <div
-              key={t.id}
-              className="flex items-center justify-between gap-3 rounded-md border border-surface2 bg-surface px-4 py-3"
-            >
-              <span className="text-sm text-parchment">{t.name}</span>
-              <span
-                className={`shrink-0 font-display text-sm ${
-                  t.point_value > 0 ? "text-gold" : t.point_value < 0 ? "text-rust" : "text-muted"
-                }`}
-              >
-                {t.point_value > 0 ? "+" : ""}
-                {t.point_value}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
