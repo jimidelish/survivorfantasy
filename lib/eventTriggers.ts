@@ -142,6 +142,15 @@ const USES_SUFFIX = " - Uses";
 // because it can only ever produce one of those two fixed, already-generic
 // actions — never arbitrary behavior — so it's not the "free text becomes
 // executable logic" problem the rest of this file's comments warn about.
+// True only for the original 21 — unlike getTriggerAction, this doesn't
+// also match the naming-convention fallback. Used where the distinction
+// actually matters: removing a custom advantage type (see DELETE
+// /api/admin/advantage-types/[name]) must stay possible even though
+// getTriggerAction now returns non-null for it too.
+export function isHardcodedTrigger(category: string, name: string): boolean {
+  return triggerLookup.has(`${category}::${name}`);
+}
+
 export function getTriggerAction(category: string, name: string): TriggerAction | null {
   const hardcoded = triggerLookup.get(`${category}::${name}`);
   if (hardcoded) return hardcoded;

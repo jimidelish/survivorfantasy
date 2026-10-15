@@ -267,18 +267,23 @@ Scores and Home actually display as real standings.
   elimination/advantage logging; their point values are still freely
   editable. See `lib/eventTriggers.ts` for the full list and what each one
   does.
-- **Add advantage** — an admin-only button beside the Advantages heading
-  opens a popup to create a brand-new advantage type: a name and a color
-  (no code change needed). It creates two event types, `"<name> - Obtains"`
-  and `"<name> - Uses"` (10 points each by default — adjust via that
-  category's Edit button afterward), which the trigger engine recognizes
-  by that naming convention alone — logging either on Episode Events
+- **Add/remove advantage** — an admin-only button beside the Advantages
+  heading opens a popup with two tabs (Add, the default, and Remove).
+  **Add** creates a brand-new advantage type from a name and a color (no
+  code change needed): two event types, `"<name> - Obtains"` and
+  `"<name> - Uses"` (10 points each by default — adjust via that category's
+  Edit button afterward), which the trigger engine recognizes by that
+  naming convention alone — logging either on Episode Events
   grants/marks-used the advantage exactly like the 9 built-in types, and
   "Advantage Given to/Used for Someone Else" works with it too. The chosen
   color is what shows up on My Picks' advantage badges and Episode Events'
-  pill headers for it. The Update Survivors tab's manual "grant an
-  advantage" dropdown includes custom types too, right alongside the 9
-  built-ins.
+  pill headers for it. **Remove** lists only custom advantage types (never
+  the 9 built-ins) in a dropdown, warns if any survivor currently holds the
+  selected one, and on confirm retires both its event types (past events
+  that used them keep their recorded points — nothing is deleted, just
+  deactivated) without taking the advantage away from anyone who already
+  has it. The Update Survivors tab's manual "grant an advantage" dropdown
+  includes custom types too, right alongside the 9 built-ins.
 
 ---
 
@@ -324,7 +329,7 @@ app/
   picks/page.tsx           My Picks (draft + survivor reference)
   scores/page.tsx           Scores (stacked bar charts, by player/survivor)
   events/page.tsx            Episode Events (readable by all, logging admin-only)
-  scoring/page.tsx             Scoring Guide (public; per-category inline edit + Add advantage for admins)
+  scoring/page.tsx             Scoring Guide (public; per-category inline edit + Add/remove advantage for admins)
   admin/page.tsx              Admin: Season Control (+ Season Setup) / Update Survivors / Assign Tribes
   login/page.tsx                Simple name-based sign-in
   api/
@@ -335,7 +340,7 @@ app/
     survivors/                   List survivors + tribe + advantages (current season)
     tribes/                       List tribes (current season)
     event-types/                   Dynamic scoring reference table
-    advantage-types/                 Custom advantage types (name + color), beyond the 9 built-ins
+    advantage-types/                 Custom advantage types (name, color, active holder count), beyond the 9 built-ins
     events/                          Get events, undo/clear (reverses trigger_effect first)
     events/bulk/                       Log events for every (survivor x event type) pair at once,
                                           applying any trigger actions
@@ -355,7 +360,8 @@ app/
     admin/survivors-csv/                     Season Setup CSV upload
     admin/event-types/                        Scoring Guide's "add event type" (upserts on category+name)
     admin/event-types/[id]/                      Scoring Guide's inline point-value edit, and remove (soft-delete)
-    admin/advantage-types/                      Scoring Guide's "Add advantage" popup (creates the Obtains/Uses pair)
+    admin/advantage-types/                      Scoring Guide's Add tab (creates the Obtains/Uses pair)
+    admin/advantage-types/[name]/                  Scoring Guide's Remove tab (soft-deletes the pair)
     admin/survivors/[id]/                           Update eliminated status/tribe
     admin/advantages/, admin/advantages/[id]/         Grant/mark-used/remove advantages
     admin/tribes/, admin/tribes/[id]/                   Add/rename/recolor/delete tribes

@@ -255,7 +255,7 @@ export default function ScoringPage() {
                       }
                       className="rounded-full border border-surface2 px-3 py-1 text-xs text-muted hover:border-gold/50 disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      + Add advantage
+                      Add/remove advantage
                     </button>
                   )}
                   {user?.is_admin && (
@@ -362,9 +362,9 @@ export default function ScoringPage() {
       </div>
 
       {addAdvantageOpen && (
-        <AddAdvantageModal
+        <AdvantageTypeModal
           onClose={() => setAddAdvantageOpen(false)}
-          onAdded={() => {
+          onChanged={() => {
             setAddAdvantageOpen(false);
             refresh();
           }}
@@ -502,7 +502,54 @@ function ScoringRow({
   );
 }
 
-function AddAdvantageModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
+interface CustomAdvantageType {
+  name: string;
+  color: string;
+  activeHolders: number;
+}
+
+function AdvantageTypeModal({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
+  const [tab, setTab] = useState<"add" | "remove">("add");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-jungle/80 px-4">
+      <div className="w-full max-w-md rounded-md border border-surface2 bg-surface px-5 py-5">
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTab("add")}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm ${
+              tab === "add"
+                ? "border-gold/50 bg-surface2 text-parchment"
+                : "border-surface2 text-muted"
+            }`}
+          >
+            Add
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab("remove")}
+            className={`flex-1 rounded-md border px-3 py-2 text-sm ${
+              tab === "remove"
+                ? "border-gold/50 bg-surface2 text-parchment"
+                : "border-surface2 text-muted"
+            }`}
+          >
+            Remove
+          </button>
+        </div>
+
+        {tab === "add" ? (
+          <AddAdvantageTab onClose={onClose} onAdded={onChanged} />
+        ) : (
+          <RemoveAdvantageTab onClose={onClose} onRemoved={onChanged} />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function AddAdvantageTab({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
   const [name, setName] = useState("");
   const [color, setColor] = useState("#8FA294");
   const [submitting, setSubmitting] = useState(false);
@@ -527,65 +574,170 @@ function AddAdvantageModal({ onClose, onAdded }: { onClose: () => void; onAdded:
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-jungle/80 px-4">
-      <div className="w-full max-w-md rounded-md border border-surface2 bg-surface px-5 py-5">
-        <h3 className="font-display text-lg">Add a new advantage</h3>
-        <p className="mt-2 text-sm text-muted">
-          This creates a brand-new advantage type and adds two matching event types to the
-          Advantages category: <span className="text-parchment">&quot;&lt;name&gt; - Obtains&quot;</span>{" "}
-          and <span className="text-parchment">&quot;&lt;name&gt; - Uses&quot;</span>. Logging either one
-          on Episode Events will automatically grant or mark-used the advantage for that
-          survivor, and &quot;Advantage Given to/Used for Someone Else&quot; will work with it too —
-          same as every built-in advantage. Both event types start at 10 points; adjust them
-          afterward via this category's Edit button.
-        </p>
+    <>
+      <p className="mt-4 text-sm text-muted">
+        This creates a brand-new advantage type and adds matching episode event categories. When
+        logged, these categories will automatically add or remove the advantage.
+      </p>
+      <p className="mt-2 text-xs text-muted">
+        Both event types start at 10 points; adjust them afterward via this category&apos;s Edit
+        button.
+      </p>
 
-        <label className="mt-4 block text-xs text-muted">Advantage name</label>
+      <label className="mt-4 block text-xs text-muted">Advantage name</label>
+      <input
+        autoFocus
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+        placeholder="e.g. Safety Without Power"
+        className="mt-1 w-full rounded-md border border-surface2 bg-surface2 px-3 py-2 text-sm"
+      />
+
+      <label className="mt-4 block text-xs text-muted">Color</label>
+      <div className="mt-1 flex items-center gap-2">
         <input
-          autoFocus
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="e.g. Safety Without Power"
-          className="mt-1 w-full rounded-md border border-surface2 bg-surface2 px-3 py-2 text-sm"
+          type="color"
+          value={color}
+          onChange={(e) => setColor(e.target.value)}
+          className="h-9 w-12 cursor-pointer rounded-md border border-surface2 bg-surface2"
         />
+        <span
+          className="rounded-full border px-3 py-1 text-xs font-semibold text-jungle"
+          style={{ backgroundColor: color, borderColor: color }}
+        >
+          {name.trim() || "Preview"}
+        </span>
+      </div>
 
-        <label className="mt-4 block text-xs text-muted">Color</label>
-        <div className="mt-1 flex items-center gap-2">
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            className="h-9 w-12 cursor-pointer rounded-md border border-surface2 bg-surface2"
-          />
-          <span
-            className="rounded-full border px-3 py-1 text-xs font-semibold text-jungle"
-            style={{ backgroundColor: color, borderColor: color }}
+      {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+
+      <div className="mt-5 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={submitting}
+          className="rounded-md border border-surface2 px-4 py-2 text-sm text-muted hover:border-gold/50 disabled:opacity-40"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={submit}
+          disabled={submitting || !name.trim()}
+          className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90 disabled:opacity-40"
+        >
+          {submitting ? "Adding…" : "Add advantage"}
+        </button>
+      </div>
+    </>
+  );
+}
+
+function RemoveAdvantageTab({ onClose, onRemoved }: { onClose: () => void; onRemoved: () => void }) {
+  const [types, setTypes] = useState<CustomAdvantageType[] | null>(null);
+  const [selected, setSelected] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/advantage-types")
+      .then((r) => r.json())
+      .then((data: CustomAdvantageType[]) => {
+        setTypes(data);
+        setSelected(data[0]?.name ?? "");
+      });
+  }, []);
+
+  const selectedType = types?.find((t) => t.name === selected);
+
+  async function submit() {
+    if (!selected) return;
+    const holders = selectedType?.activeHolders ?? 0;
+    const confirmed = window.confirm(
+      `Remove "${selected}"? This retires it and its "- Obtains"/"- Uses" event types from ` +
+        `future logging. Past events that already used it keep their recorded points.` +
+        (holders > 0
+          ? ` ${holders} survivor${holders > 1 ? "s" : ""} currently hold${
+              holders > 1 ? "" : "s"
+            } this advantage — removing it won't take it away from them.`
+          : "")
+    );
+    if (!confirmed) return;
+
+    setSubmitting(true);
+    setError(null);
+    const res = await fetch(`/api/admin/advantage-types/${encodeURIComponent(selected)}`, {
+      method: "DELETE",
+    });
+    setSubmitting(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error || "Something went wrong.");
+      return;
+    }
+    onRemoved();
+  }
+
+  return (
+    <>
+      <p className="mt-4 text-sm text-muted">
+        This will remove an advantage entirely, including its episode event categories. ONLY use
+        if this advantage has been retired from the game.
+      </p>
+
+      {types === null ? (
+        <p className="mt-4 text-sm text-muted">Loading advantage types…</p>
+      ) : types.length === 0 ? (
+        <p className="mt-4 text-sm text-muted">
+          No custom advantage types to remove — the 9 built-in ones can&apos;t be removed here.
+        </p>
+      ) : (
+        <>
+          <label className="mt-4 block text-xs text-muted">Which advantage?</label>
+          <select
+            value={selected}
+            onChange={(e) => setSelected(e.target.value)}
+            className="mt-1 w-full rounded-md border border-surface2 bg-surface2 px-3 py-2 text-sm"
           >
-            {name.trim() || "Preview"}
-          </span>
-        </div>
+            {types.map((t) => (
+              <option key={t.name} value={t.name}>
+                {t.name}
+              </option>
+            ))}
+          </select>
 
-        {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+          {selectedType && selectedType.activeHolders > 0 && (
+            <p className="mt-3 text-sm text-gold">
+              ⚠ {selectedType.activeHolders} survivor{selectedType.activeHolders > 1 ? "s" : ""}{" "}
+              currently hold{selectedType.activeHolders > 1 ? "" : "s"} this advantage. Removing
+              it won&apos;t take it away from them — it just retires it from future event logging.
+            </p>
+          )}
+        </>
+      )}
 
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="rounded-md border border-surface2 px-4 py-2 text-sm text-muted hover:border-gold/50 disabled:opacity-40"
-          >
-            Cancel
-          </button>
+      {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+
+      <div className="mt-5 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={onClose}
+          disabled={submitting}
+          className="rounded-md border border-surface2 px-4 py-2 text-sm text-muted hover:border-gold/50 disabled:opacity-40"
+        >
+          Cancel
+        </button>
+        {types && types.length > 0 && (
           <button
             type="button"
             onClick={submit}
-            disabled={submitting || !name.trim()}
-            className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90 disabled:opacity-40"
+            disabled={submitting || !selected}
+            className="rounded-md border border-rust/50 px-4 py-2 text-sm font-medium text-rust hover:bg-rust/10 disabled:opacity-40"
           >
-            {submitting ? "Adding…" : "Add advantage"}
+            {submitting ? "Removing…" : "Remove advantage"}
           </button>
-        </div>
+        )}
       </div>
-    </div>
+    </>
   );
 }
