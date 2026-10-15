@@ -24,7 +24,12 @@ interface Budget {
 
 interface SurvivorStatsResponse {
   episodes: { id: string; number: number; title: string | null }[];
-  series: { id: string; points: Record<string, number> }[];
+  series: {
+    id: string;
+    points: Record<string, number>;
+    eliminated?: boolean;
+    eliminatedEpisodeNumber?: number | null;
+  }[];
 }
 
 export default function PicksPage() {
@@ -136,19 +141,33 @@ export default function PicksPage() {
   const currentEpisode = episodes.find((e) => e.id === episodeId);
 
   // A survivor's season-to-date points and per-episode average, counted only
-  // through episodes BEFORE the one currently being drafted for.
+  // through episodes BEFORE the one currently being drafted for — and
+  // likewise, whether they count as "eliminated" for this view is based on
+  // whether that happened before this episode, not whether they're
+  // eliminated *now*. Without this, browsing/picking for a past episode
+  // would spoil eliminations that happened in later episodes. Falls back
+  // to the live eliminated flag when we don't know which episode it
+  // happened in (e.g. a manual toggle with no matching logged event).
   const survivorStats = useMemo(() => {
-    const stats = new Map<string, { total: number; average: number; playedCount: number }>();
+    const stats = new Map<
+      string,
+      { total: number; average: number; playedCount: number; eliminated: boolean }
+    >();
     if (!currentEpisode) return stats;
     const priorEpisodes = statsData.episodes.filter((e) => e.number < currentEpisode.number);
     for (const s of statsData.series) {
       let total = 0;
       for (const ep of priorEpisodes) total += s.points[ep.id] || 0;
       const playedCount = priorEpisodes.length;
+      const eliminated =
+        s.eliminatedEpisodeNumber != null
+          ? s.eliminatedEpisodeNumber < currentEpisode.number
+          : !!s.eliminated;
       stats.set(s.id, {
         total,
         average: playedCount > 0 ? total / playedCount : 0,
         playedCount,
+        eliminated,
       });
     }
     return stats;
@@ -157,9 +176,10 @@ export default function PicksPage() {
   // Groups survivors before applying the chosen sort within each group —
   // active survivors first, then the host (who has no stats to rank by),
   // then eliminated survivors last, matching the ordering rule set when
-  // the host was added to the roster.
+  // the host was added to the roster. "Eliminated" here is spoiler-safe —
+  // see survivorStats above.
   function groupRank(s: Survivor) {
-    if (s.eliminated) return 2;
+    if (survivorStats.get(s.id)?.eliminated) return 2;
     if (s.is_host) return 1;
     return 0;
   }
@@ -492,6 +512,9 @@ export default function PicksPage() {
         {sortedSurvivors.map((s) => {
           const multiplier = picks[s.id] || 0;
           const stats = survivorStats.get(s.id);
+          // Spoiler-safe: whether they'd shown as eliminated as of this
+          // episode, not whether they're eliminated now — see survivorStats.
+          const eliminatedForEpisode = stats?.eliminated ?? false;
           const activeAdvantages = (s.advantages || []).filter((a) => a.status === "active");
           const canIncrease =
             multiplier < MAX_MULTIPLIER_PER_SURVIVOR && remaining > 0;
@@ -500,7 +523,7 @@ export default function PicksPage() {
             <div
               key={s.id}
               className={`rounded-md border px-4 py-4 transition-colors ${
-                s.eliminated
+                eliminatedForEpisode
                   ? "border-surface2 bg-surface/20 opacity-50"
                   : multiplier > 0
                   ? "border-gold bg-gold/10 ring-1 ring-gold/40"
@@ -522,7 +545,7 @@ export default function PicksPage() {
                         {s.is_host && (
                           <span className="ml-2 text-xs font-normal text-gold">Host</span>
                         )}
-                        {s.eliminated && (
+                        {eliminatedForEpisode && (
                           <span className="ml-2 text-xs font-normal text-rust">Eliminated</span>
                         )}
                       </p>
@@ -550,7 +573,7 @@ export default function PicksPage() {
                         <button
                           type="button"
                           onClick={() => adjust(s.id, -1)}
-                          disabled={s.eliminated || multiplier === 0 || currentEpisode?.locked}
+                          disabled={eliminatedForEpisode || multiplier === 0 || currentEpisode?.locked}
                           className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
                           aria-label={`Decrease ${s.name} multiplier`}
                         >
@@ -562,7 +585,7 @@ export default function PicksPage() {
                         <button
                           type="button"
                           onClick={() => adjust(s.id, 1)}
-                          disabled={s.eliminated || !canIncrease || currentEpisode?.locked}
+                          disabled={eliminatedForEpisode || !canIncrease || currentEpisode?.locked}
                           className="h-7 w-7 rounded-full border border-surface2 text-sm disabled:opacity-30"
                           aria-label={`Increase ${s.name} multiplier`}
                         >

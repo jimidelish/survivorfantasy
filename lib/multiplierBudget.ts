@@ -14,9 +14,10 @@ export interface MultiplierBudget {
 }
 
 // Budget = base 7, +1 for every full 100 points this user trailed the
-// season's point leader as of the episode immediately before this one.
-// The very first episode of a season always has bonus 0 (nothing to
-// compare against yet).
+// season's point leader as of the episode immediately before this one —
+// standings here include the winner-pick bonus, same as what's actually
+// shown on Scores/Home. The very first episode of a season always has
+// bonus 0 (nothing to compare against yet).
 export async function computeMultiplierBudget(
   userId: string,
   episodeId: string
@@ -61,8 +62,11 @@ export async function computeMultiplierBudget(
 
   const [{ data: users }, { data: pointsRows }] = await Promise.all([
     supabaseAdmin.from("users").select("id"),
+    // The "real" standings, winner-pick bonus included — same view Scores
+    // and Home use — so the behind-leader bonus reflects actual rank, not
+    // the bonus-free baseline.
     supabaseAdmin
-      .from("user_episode_points")
+      .from("user_episode_points_with_winner_pick")
       .select("user_id, points")
       .in("episode_id", priorEpisodeIds),
   ]);
