@@ -354,6 +354,8 @@ lib/
   csvFilenames.ts                Parses season number out of CSV filenames
   eventTriggers.ts                 The 21 standard trigger events + what each does
   triggerEngine.ts                   Applies/reverses a trigger's effect on a survivor
+  advantageGrouping.ts                 Groups Advantages event types into colored pills
+                                          (Episode Events checkboxes, Scoring Guide reference)
   types.ts                             Shared TypeScript types + game constants
 components/
   NavBar.tsx               Season-aware header, admin link for admins

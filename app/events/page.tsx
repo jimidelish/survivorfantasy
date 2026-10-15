@@ -10,10 +10,8 @@ import {
   SurvivorEvent,
   Tribe,
   LOCAL_STORAGE_KEY,
-  ADVANTAGE_COLORS,
-  AdvantageType,
 } from "@/lib/types";
-import { getTriggerAction } from "@/lib/eventTriggers";
+import { groupAdvantageEventTypes, advantagePillColor } from "@/lib/advantageGrouping";
 import SurvivorAvatar from "@/components/SurvivorAvatar";
 
 interface PendingTransfer {
@@ -673,14 +671,11 @@ function AdvantageTransferModal({
   );
 }
 
-// Groups advantage event types by the part of their name before " - " (e.g.
-// "Block a Vote - Obtains" / "Block a Vote - Uses" become one "Block a
-// Vote" group with "- Obtains"/"- Uses" entries) into colored pills, so the
-// Advantages category reads as a handful of advantage types rather than a
-// flat alphabetical list. Event types that don't follow that "X - Y"
-// pattern (e.g. "Finds Advantage Clue", admin-added ones with no fixed
-// shape) just render as plain checkboxes below, same as every other
-// category.
+// Groups advantage event types into colored pills via lib/advantageGrouping
+// (shared with the Scoring Guide's read-only version of this same layout),
+// so the Advantages category reads as a handful of advantage types rather
+// than a flat alphabetical list. Anything that doesn't fit that grouping
+// just renders as plain checkboxes below, same as every other category.
 function AdvantageCategoryBody({
   types,
   selectedEventTypeIds,
@@ -690,34 +685,7 @@ function AdvantageCategoryBody({
   selectedEventTypeIds: Set<string>;
   onToggle: (id: string) => void;
 }) {
-  const groupMap = new Map<string, { suffix: string; t: EventType }[]>();
-  const standalone: EventType[] = [];
-
-  for (const t of types) {
-    const idx = t.name.indexOf(" - ");
-    if (idx === -1) {
-      standalone.push(t);
-      continue;
-    }
-    const prefix = t.name.slice(0, idx);
-    const suffix = t.name.slice(idx + 3);
-    if (!groupMap.has(prefix)) groupMap.set(prefix, []);
-    groupMap.get(prefix)!.push({ suffix, t });
-  }
-
-  const groups = Array.from(groupMap.entries())
-    .map(
-      ([prefix, items]) =>
-        [
-          prefix,
-          [...items].sort(
-            (a, b) => b.t.point_value - a.t.point_value || a.suffix.localeCompare(b.suffix)
-          ),
-        ] as [string, { suffix: string; t: EventType }[]]
-    )
-    .sort((a, b) => a[0].localeCompare(b[0]));
-
-  standalone.sort((a, b) => a.name.localeCompare(b.name));
+  const { groups, standalone } = groupAdvantageEventTypes(types);
 
   return (
     <div className="border-t border-surface2 px-3 py-3">
@@ -784,16 +752,3 @@ function AdvantageCategoryBody({
   );
 }
 
-// Matches the pill's color to the app's existing advantage color system
-// where possible — an exact prefix match (most of them: "Block a Vote",
-// "Extra Vote", "Beware Advantage", etc.) first, then falling back to the
-// trigger's own advantageType for names that don't match verbatim (e.g.
-// "Hidden Immunity Idol - Obtains" still resolves to the "Immunity Idol"
-// color via its trigger). Anything else (a custom advantage-category event
-// type with no matching trigger) gets a neutral fallback.
-function advantagePillColor(t: EventType, prefix: string): string {
-  if (prefix in ADVANTAGE_COLORS) return ADVANTAGE_COLORS[prefix as AdvantageType];
-  const action = getTriggerAction(t.category, t.name);
-  if (action && "advantageType" in action) return ADVANTAGE_COLORS[action.advantageType];
-  return "#8FA294";
-}
