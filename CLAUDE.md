@@ -111,6 +111,39 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   on `survivors` (it used to be `survivors.shot_in_the_dark`, since removed)
   — Season Setup CSV import auto-grants every survivor an active "Shot in
   the Dark" row, same as the old "everyone starts eligible" default.
+  `survivor_advantages.type` is open text (no DB check constraint) rather
+  than the 9-value closed set it started as, because of the next point:
+- **Custom advantage types**: the Scoring Guide's admin-only **+ Add
+  advantage** button next to the Advantages heading (`app/scoring/page.tsx`'s
+  `AddAdvantageModal`) lets admins create a new advantage type at runtime —
+  no code change needed. It POSTs a name + chosen color to
+  `app/api/admin/advantage-types/route.ts`, which (1) inserts a
+  `(name, color)` row into the new `advantage_types` table — the real
+  uniqueness guard, since `event_types`' upsert would otherwise silently
+  reactivate a same-named removed one without complaint — then (2) creates
+  two Advantages-category event types, `"<name> - Obtains"` and
+  `"<name> - Uses"`, defaulting to 10 points each (tune via that category's
+  normal Edit mode afterward). `advantage_types` only holds *custom* types;
+  the 9 built-ins stay hardcoded in `lib/types.ts` and are never written
+  there. From then on, `lib/eventTriggers.ts`'s `getTriggerAction`
+  recognizes the `" - Obtains"`/`" - Uses"` naming pattern as a fallback
+  *after* the hardcoded 21 — any Advantages-category event type with that
+  suffix that isn't already hardcoded is treated as
+  `add_advantage`/`use_advantage` for an advantage of that name, the same
+  generic actions every built-in type uses. This is safe specifically
+  because it can only ever produce one of those two fixed, already-generic
+  actions — not the "free text becomes executable logic" problem the
+  hardcoded-trigger comments elsewhere warn about. The same fallback makes
+  `getObtainEventFor` (used by "Advantage Given to/Used for Someone Else")
+  work for custom types too, and because the Scoring Guide's rename/remove
+  protection is also keyed off `getTriggerAction`, custom advantage event
+  types get the same can't-rename/can't-remove treatment as the 21 standard
+  ones automatically. `GET /api/advantage-types` is a public read of that
+  table (`{name, color}[]`), used three places: My Picks' advantage badges
+  and Episode Events' pill colors both check it before falling back to
+  `getAdvantageColor`'s neutral default, and Admin > Update Survivors
+  merges the names into its "grant an advantage" dropdown alongside the 9
+  built-ins (`ADVANTAGE_TYPES`).
 - **Tribes** are a season-scoped table (`tribes`: name + color), not free
   text. `survivors.current_tribe_id` references it (`on delete set null`,
   so deleting a tribe just unassigns its members rather than blocking or

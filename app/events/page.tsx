@@ -11,7 +11,7 @@ import {
   Tribe,
   LOCAL_STORAGE_KEY,
   ADVANTAGE_COLORS,
-  AdvantageType,
+  getAdvantageColor,
 } from "@/lib/types";
 import { getTriggerAction } from "@/lib/eventTriggers";
 import SurvivorAvatar from "@/components/SurvivorAvatar";
@@ -47,6 +47,11 @@ export default function EventsPage() {
   const [eventSort, setEventSort] = useState<"order" | "survivor">("order");
   const [myPickSurvivorIds, setMyPickSurvivorIds] = useState<Set<string>>(new Set());
 
+  // Colors for custom advantage types (anything beyond the 9 built-ins) —
+  // see lib/types.ts's getAdvantageColor, which falls back to a neutral
+  // color when a type isn't found here either.
+  const [customAdvantageColors, setCustomAdvantageColors] = useState<Record<string, string>>({});
+
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
@@ -63,11 +68,17 @@ export default function EventsPage() {
       fetch("/api/survivors").then((r) => r.json()),
       fetch("/api/tribes").then((r) => r.json()),
       fetch("/api/event-types").then((r) => r.json()),
-    ]).then(([eps, survs, tribeList, types]) => {
+      fetch("/api/advantage-types").then((r) => r.json()),
+    ]).then(([eps, survs, tribeList, types, customTypes]) => {
       setEpisodes(eps);
       setSurvivors(survs);
       setTribes(tribeList);
       setEventTypes(types);
+      setCustomAdvantageColors(
+        Object.fromEntries(
+          (customTypes as { name: string; color: string }[]).map((t) => [t.name, t.color])
+        )
+      );
       const activeEpisode = eps.find((e: Episode) => e.is_current) || eps[eps.length - 1];
       if (activeEpisode) setEpisodeId(activeEpisode.id);
     });
@@ -382,6 +393,7 @@ export default function EventsPage() {
                     types={types}
                     selectedEventTypeIds={selectedEventTypeIds}
                     onToggle={toggleEventType}
+                    customColors={customAdvantageColors}
                   />
                 ) : (
                   expanded && (
@@ -685,10 +697,12 @@ function AdvantageCategoryBody({
   types,
   selectedEventTypeIds,
   onToggle,
+  customColors,
 }: {
   types: EventType[];
   selectedEventTypeIds: Set<string>;
   onToggle: (id: string) => void;
+  customColors: Record<string, string>;
 }) {
   const groupMap = new Map<string, { suffix: string; t: EventType }[]>();
   const standalone: EventType[] = [];
@@ -726,7 +740,7 @@ function AdvantageCategoryBody({
           <div key={prefix} className="min-w-[9rem]">
             <span
               className="inline-block rounded-full px-3 py-1 text-xs font-semibold text-jungle"
-              style={{ backgroundColor: advantagePillColor(items[0].t, prefix) }}
+              style={{ backgroundColor: advantagePillColor(items[0].t, prefix, customColors) }}
             >
               {prefix}
             </span>
@@ -786,14 +800,20 @@ function AdvantageCategoryBody({
 
 // Matches the pill's color to the app's existing advantage color system
 // where possible — an exact prefix match (most of them: "Block a Vote",
-// "Extra Vote", "Beware Advantage", etc.) first, then falling back to the
-// trigger's own advantageType for names that don't match verbatim (e.g.
-// "Hidden Immunity Idol - Obtains" still resolves to the "Immunity Idol"
-// color via its trigger). Anything else (a custom advantage-category event
-// type with no matching trigger) gets a neutral fallback.
-function advantagePillColor(t: EventType, prefix: string): string {
-  if (prefix in ADVANTAGE_COLORS) return ADVANTAGE_COLORS[prefix as AdvantageType];
+// "Extra Vote", "Beware Advantage", etc.) first, then the trigger's own
+// advantageType for names that don't match verbatim (e.g. "Hidden Immunity
+// Idol - Obtains" still resolves to the "Immunity Idol" color via its
+// trigger), then a custom advantage type's chosen color (customColors, from
+// /api/advantage-types), then a neutral fallback.
+function advantagePillColor(
+  t: EventType,
+  prefix: string,
+  customColors: Record<string, string>
+): string {
+  if (prefix in ADVANTAGE_COLORS) return ADVANTAGE_COLORS[prefix];
   const action = getTriggerAction(t.category, t.name);
-  if (action && "advantageType" in action) return ADVANTAGE_COLORS[action.advantageType];
-  return "#8FA294";
+  if (action && "advantageType" in action) {
+    return customColors[action.advantageType] ?? getAdvantageColor(action.advantageType);
+  }
+  return customColors[prefix] ?? "#8FA294";
 }

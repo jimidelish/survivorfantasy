@@ -17,6 +17,11 @@ export interface WinnerPick {
   locked: boolean;
 }
 
+// The 9 advantage types that have existed since day one. Admins can add
+// more at runtime via the Scoring Guide's "Add advantage" button (see
+// app/api/admin/advantage-types/route.ts) — those aren't listed here, so
+// AdvantageType stays a plain string rather than a closed union: a custom
+// type is just as valid a value as these 9.
 export const ADVANTAGE_TYPES = [
   "Immunity Idol",
   "Extra Vote",
@@ -28,10 +33,15 @@ export const ADVANTAGE_TYPES = [
   "Knowledge is Power",
   "Shot in the Dark",
 ] as const;
-export type AdvantageType = (typeof ADVANTAGE_TYPES)[number];
+export type AdvantageType = string;
 
-// One distinct color per advantage type, used for the tag pills on My Picks.
-export const ADVANTAGE_COLORS: Record<AdvantageType, string> = {
+// One distinct color per *known* advantage type, used for the tag pills on
+// My Picks and the pill headers on Episode Events/Scoring Guide. Custom
+// advantage types (anything not in this map) fall back to a neutral color
+// via getAdvantageColor — see its callers rather than indexing this
+// directly, so a new type degrades gracefully instead of rendering
+// "undefined" as a CSS color.
+export const ADVANTAGE_COLORS: Record<string, string> = {
   "Immunity Idol": "#B8860B", // bronze/goldenrod
   "Extra Vote": "#4A90D9", // blue
   "Beware Advantage": "#D64545", // red/crimson
@@ -42,6 +52,12 @@ export const ADVANTAGE_COLORS: Record<AdvantageType, string> = {
   "Knowledge is Power": "#D9D9D9", // whitish grey
   "Shot in the Dark": "#3FA6A0", // teal
 };
+
+const FALLBACK_ADVANTAGE_COLOR = "#8FA294"; // muted sage — same neutral used elsewhere for "no specific color"
+
+export function getAdvantageColor(type: string): string {
+  return ADVANTAGE_COLORS[type] ?? FALLBACK_ADVANTAGE_COLOR;
+}
 
 export interface SurvivorAdvantage {
   id: string;

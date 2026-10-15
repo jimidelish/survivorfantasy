@@ -129,18 +129,47 @@ const triggerLookup = new Map<string, TriggerAction>(
   EVENT_TRIGGERS.map((t) => [`${t.category}::${t.name}`, t.action])
 );
 
+const OBTAINS_SUFFIX = " - Obtains";
+const USES_SUFFIX = " - Uses";
+
+// Custom advantage types (Scoring Guide's "Add advantage" button, see
+// app/api/admin/advantage-types/route.ts) aren't in the hardcoded list
+// above — they're recognized by this naming convention instead: any
+// Advantages-category event type named "<Name> - Obtains"/"<Name> - Uses"
+// that isn't already a hardcoded trigger is assumed to grant/mark-used an
+// advantage of type <Name>, using the exact same generic add_advantage/
+// use_advantage actions as the 9 standard types. This is safe precisely
+// because it can only ever produce one of those two fixed, already-generic
+// actions — never arbitrary behavior — so it's not the "free text becomes
+// executable logic" problem the rest of this file's comments warn about.
 export function getTriggerAction(category: string, name: string): TriggerAction | null {
-  return triggerLookup.get(`${category}::${name}`) || null;
+  const hardcoded = triggerLookup.get(`${category}::${name}`);
+  if (hardcoded) return hardcoded;
+
+  if (category === "Advantages") {
+    if (name.endsWith(OBTAINS_SUFFIX)) {
+      return { kind: "add_advantage", advantageType: name.slice(0, -OBTAINS_SUFFIX.length) };
+    }
+    if (name.endsWith(USES_SUFFIX)) {
+      return { kind: "use_advantage", advantageType: name.slice(0, -USES_SUFFIX.length) };
+    }
+  }
+
+  return null;
 }
 
 // The "Obtains" trigger event that grants a given advantage type, if one
 // exists (Beware Advantage and Shot in the Dark are granted other ways, not
 // via a standalone "obtains" trigger, so this returns null for those). Used
 // when an advantage is given to someone else, to also log a normal event
-// recording that they received it.
+// recording that they received it. Falls back to the naming convention for
+// custom advantage types — the caller does its own DB lookup before using
+// the result, so a wrong guess just means that event doesn't exist and gets
+// skipped, same as it already does for Beware Advantage/Shot in the Dark.
 export function getObtainEventFor(advantageType: string): { category: string; name: string } | null {
   const match = EVENT_TRIGGERS.find(
     (t) => t.action.kind === "add_advantage" && t.action.advantageType === advantageType
   );
-  return match ? { category: match.category, name: match.name } : null;
+  if (match) return { category: match.category, name: match.name };
+  return { category: "Advantages", name: `${advantageType}${OBTAINS_SUFFIX}` };
 }

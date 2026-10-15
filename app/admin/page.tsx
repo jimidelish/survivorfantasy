@@ -378,18 +378,27 @@ function SeasonControlTab() {
 function UpdateSurvivorsTab() {
   const [survivors, setSurvivors] = useState<Survivor[]>([]);
   const [tribes, setTribes] = useState<Tribe[]>([]);
+  const [customAdvantageTypes, setCustomAdvantageTypes] = useState<{ name: string; color: string }[]>(
+    []
+  );
   const [loading, setLoading] = useState(true);
 
   function refresh() {
     Promise.all([
       fetch("/api/survivors").then((r) => r.json()),
       fetch("/api/tribes").then((r) => r.json()),
-    ]).then(([survs, tribeList]) => {
+      fetch("/api/advantage-types").then((r) => r.json()),
+    ]).then(([survs, tribeList, customTypes]) => {
       setSurvivors(survs);
       setTribes(tribeList);
+      setCustomAdvantageTypes(customTypes);
       setLoading(false);
     });
   }
+
+  // Built-ins first, then any custom advantage types created via the
+  // Scoring Guide's "Add advantage" button — see app/api/advantage-types.
+  const advantageTypeOptions = [...ADVANTAGE_TYPES, ...customAdvantageTypes.map((t) => t.name)];
 
   useEffect(refresh, []);
 
@@ -453,6 +462,7 @@ function UpdateSurvivorsTab() {
             key={s.id}
             survivor={s}
             tribes={tribes}
+            advantageTypeOptions={advantageTypeOptions}
             onUpdate={(update) => updateSurvivor(s.id, update)}
             onAddAdvantage={(type) => addAdvantage(s.id, type)}
             onSetAdvantageStatus={setAdvantageStatus}
@@ -468,6 +478,7 @@ function UpdateSurvivorsTab() {
 function SurvivorRow({
   survivor,
   tribes,
+  advantageTypeOptions,
   onUpdate,
   onAddAdvantage,
   onSetAdvantageStatus,
@@ -476,6 +487,7 @@ function SurvivorRow({
 }: {
   survivor: Survivor;
   tribes: Tribe[];
+  advantageTypeOptions: string[];
   onUpdate: (update: {
     eliminated?: boolean;
     has_vote?: boolean;
@@ -486,7 +498,7 @@ function SurvivorRow({
   onRemoveAdvantage: (advantageId: string) => void;
   onRemoveTribeHistoryEntry: (historyId: string) => void;
 }) {
-  const [newAdvantageType, setNewAdvantageType] = useState<string>(ADVANTAGE_TYPES[0]);
+  const [newAdvantageType, setNewAdvantageType] = useState<string>(advantageTypeOptions[0] ?? "");
 
   return (
     <div
@@ -614,7 +626,7 @@ function SurvivorRow({
             onChange={(e) => setNewAdvantageType(e.target.value)}
             className="rounded-md border border-surface2 bg-surface2 px-2 py-1 text-xs"
           >
-            {ADVANTAGE_TYPES.map((t) => (
+            {advantageTypeOptions.map((t) => (
               <option key={t} value={t}>
                 {t}
               </option>

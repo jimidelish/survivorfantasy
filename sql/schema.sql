@@ -95,17 +95,31 @@ create index if not exists idx_survivors_season on survivors(season_id);
 
 -- A survivor can hold several advantages at once. Each row is one advantage;
 -- mark it 'used' (rather than deleting) so history is preserved.
+-- `type` is open text, not a fixed enum — besides the 9 built-in advantage
+-- types (lib/types.ts's ADVANTAGE_TYPES), admins can create new ones at
+-- runtime via the Scoring Guide's "Add advantage" button (see
+-- app/api/admin/advantage-types/route.ts and lib/eventTriggers.ts's
+-- getTriggerAction naming-convention fallback), so this can't be a closed
+-- check constraint.
 create table if not exists survivor_advantages (
   id uuid primary key default gen_random_uuid(),
   survivor_id uuid not null references survivors(id) on delete cascade,
-  type text not null check (type in (
-    'Immunity Idol', 'Extra Vote', 'Beware Advantage', 'Advantage Clue',
-    'Steal a Vote', 'Block a Vote', 'Idol Nullifier', 'Knowledge is Power',
-    'Shot in the Dark'
-  )),
+  type text not null,
   status text not null default 'active' check (status in ('active', 'used')),
   acquired_at timestamptz not null default now(),
   used_at timestamptz
+);
+
+-- Custom advantage types only (the 9 built-ins stay hardcoded in
+-- lib/types.ts's ADVANTAGE_TYPES/ADVANTAGE_COLORS) — created by the
+-- Scoring Guide's "Add advantage" popup alongside the matching "<name> -
+-- Obtains"/"<name> - Uses" event types. `color` is what the admin picked
+-- in that popup; it's what My Picks/Episode Events render for this type
+-- instead of the neutral fallback (see lib/types.ts's getAdvantageColor).
+create table if not exists advantage_types (
+  name text primary key,
+  color text not null,
+  created_at timestamptz not null default now()
 );
 
 create index if not exists idx_survivor_advantages_survivor on survivor_advantages(survivor_id);

@@ -8,7 +8,7 @@ import {
   Survivor,
   LOCAL_STORAGE_KEY,
   MAX_MULTIPLIER_PER_SURVIVOR,
-  ADVANTAGE_COLORS,
+  getAdvantageColor,
 } from "@/lib/types";
 import SurvivorAvatar from "@/components/SurvivorAvatar";
 import UserPicksList, { UserPicksGroup } from "@/components/UserPicksList";
@@ -56,6 +56,20 @@ export default function PicksPage() {
   const [sortBy, setSortBy] = useState<"alphabetical" | "average" | "total">("alphabetical");
 
   const [allPicks, setAllPicks] = useState<UserPicksGroup[]>([]);
+
+  // Colors for custom advantage types (anything beyond the 9 built-ins) —
+  // see lib/types.ts's getAdvantageColor, which falls back to a neutral
+  // color when a type isn't found here either.
+  const [customAdvantageColors, setCustomAdvantageColors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch("/api/advantage-types")
+      .then((r) => r.json())
+      .then((types: { name: string; color: string }[]) => {
+        setCustomAdvantageColors(Object.fromEntries(types.map((t) => [t.name, t.color])));
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
@@ -630,8 +644,8 @@ export default function PicksPage() {
                             key={a.id}
                             className="rounded-full border px-2 py-0.5 text-[11px]"
                             style={{
-                              borderColor: `${ADVANTAGE_COLORS[a.type]}66`,
-                              color: ADVANTAGE_COLORS[a.type],
+                              borderColor: `${customAdvantageColors[a.type] ?? getAdvantageColor(a.type)}66`,
+                              color: customAdvantageColors[a.type] ?? getAdvantageColor(a.type),
                             }}
                           >
                             {a.type}

@@ -30,6 +30,8 @@ export default function ScoringPage() {
   );
   const [actionError, setActionError] = useState<string | null>(null);
 
+  const [addAdvantageOpen, setAddAdvantageOpen] = useState(false);
+
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (raw) {
@@ -240,25 +242,42 @@ export default function ScoringPage() {
             <div key={category}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <h2 className="font-display text-xl font-semibold text-gold">{category}</h2>
-                {user?.is_admin && (
-                  <button
-                    type="button"
-                    onClick={() => toggleEdit(category, types)}
-                    disabled={hasUnsavedChanges}
-                    title={
-                      hasUnsavedChanges
-                        ? "Save or discard your unsaved changes first"
-                        : undefined
-                    }
-                    className={`rounded-full border px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${
-                      editing
-                        ? "border-gold bg-gold/10 text-gold"
-                        : "border-surface2 text-muted hover:border-gold/50"
-                    }`}
-                  >
-                    {editing ? "Done" : "Edit"}
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {category === "Advantages" && user?.is_admin && (
+                    <button
+                      type="button"
+                      onClick={() => setAddAdvantageOpen(true)}
+                      disabled={hasUnsavedChanges}
+                      title={
+                        hasUnsavedChanges
+                          ? "Save or discard your unsaved changes first"
+                          : undefined
+                      }
+                      className="rounded-full border border-surface2 px-3 py-1 text-xs text-muted hover:border-gold/50 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      + Add advantage
+                    </button>
+                  )}
+                  {user?.is_admin && (
+                    <button
+                      type="button"
+                      onClick={() => toggleEdit(category, types)}
+                      disabled={hasUnsavedChanges}
+                      title={
+                        hasUnsavedChanges
+                          ? "Save or discard your unsaved changes first"
+                          : undefined
+                      }
+                      className={`rounded-full border px-3 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-40 ${
+                        editing
+                          ? "border-gold bg-gold/10 text-gold"
+                          : "border-surface2 text-muted hover:border-gold/50"
+                      }`}
+                    >
+                      {editing ? "Done" : "Edit"}
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="mt-3 rope-divider" />
               <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
@@ -341,6 +360,16 @@ export default function ScoringPage() {
           );
         })}
       </div>
+
+      {addAdvantageOpen && (
+        <AddAdvantageModal
+          onClose={() => setAddAdvantageOpen(false)}
+          onAdded={() => {
+            setAddAdvantageOpen(false);
+            refresh();
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -468,6 +497,94 @@ function ScoringRow({
             ×
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+function AddAdvantageModal({ onClose, onAdded }: { onClose: () => void; onAdded: () => void }) {
+  const [name, setName] = useState("");
+  const [color, setColor] = useState("#8FA294");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function submit() {
+    if (!name.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    const res = await fetch("/api/admin/advantage-types", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), color }),
+    });
+    const data = await res.json();
+    setSubmitting(false);
+    if (!res.ok) {
+      setError(data.error || "Something went wrong.");
+      return;
+    }
+    onAdded();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-jungle/80 px-4">
+      <div className="w-full max-w-md rounded-md border border-surface2 bg-surface px-5 py-5">
+        <h3 className="font-display text-lg">Add a new advantage</h3>
+        <p className="mt-2 text-sm text-muted">
+          This creates a brand-new advantage type and adds two matching event types to the
+          Advantages category: <span className="text-parchment">&quot;&lt;name&gt; - Obtains&quot;</span>{" "}
+          and <span className="text-parchment">&quot;&lt;name&gt; - Uses&quot;</span>. Logging either one
+          on Episode Events will automatically grant or mark-used the advantage for that
+          survivor, and &quot;Advantage Given to/Used for Someone Else&quot; will work with it too —
+          same as every built-in advantage. Both event types start at 10 points; adjust them
+          afterward via this category's Edit button.
+        </p>
+
+        <label className="mt-4 block text-xs text-muted">Advantage name</label>
+        <input
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="e.g. Safety Without Power"
+          className="mt-1 w-full rounded-md border border-surface2 bg-surface2 px-3 py-2 text-sm"
+        />
+
+        <label className="mt-4 block text-xs text-muted">Color</label>
+        <div className="mt-1 flex items-center gap-2">
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+            className="h-9 w-12 cursor-pointer rounded-md border border-surface2 bg-surface2"
+          />
+          <span
+            className="rounded-full border px-3 py-1 text-xs font-semibold text-jungle"
+            style={{ backgroundColor: color, borderColor: color }}
+          >
+            {name.trim() || "Preview"}
+          </span>
+        </div>
+
+        {error && <p className="mt-3 text-sm text-rust">{error}</p>}
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="rounded-md border border-surface2 px-4 py-2 text-sm text-muted hover:border-gold/50 disabled:opacity-40"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={submitting || !name.trim()}
+            className="rounded-md bg-ember px-4 py-2 text-sm font-medium text-jungle hover:opacity-90 disabled:opacity-40"
+          >
+            {submitting ? "Adding…" : "Add advantage"}
+          </button>
+        </div>
       </div>
     </div>
   );
