@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { LeaderboardRow, Season } from "@/lib/types";
+import { AppUser, LeaderboardRow, LOCAL_STORAGE_KEY, Season } from "@/lib/types";
 import SurvivorAvatar from "@/components/SurvivorAvatar";
 
 interface WinnerPickRow {
@@ -21,17 +21,48 @@ export default function HomePage() {
   const [winnerPicks, setWinnerPicks] = useState<WinnerPickRow[] | null>(null);
   const [winnerPicksLoading, setWinnerPicksLoading] = useState(false);
 
+  // Spoiler cutoff — see lib/pickCutoff.ts. No signed-in user means no
+  // restriction (this page has always been public). A signed-in user's
+  // standings fetch waits for their cutoff to resolve first, rather than
+  // briefly showing the unrestricted standings.
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [userChecked, setUserChecked] = useState(false);
+  const [cutoff, setCutoff] = useState<number | null>(null);
+
   useEffect(() => {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (raw) {
+      try {
+        setUser(JSON.parse(raw));
+      } catch {
+        // ignore malformed storage
+      }
+    }
+    setUserChecked(true);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/picks/cutoff?user_id=${user.id}`)
+      .then((r) => r.json())
+      .then((d: { cutoffEpisodeNumber: number }) => setCutoff(d.cutoffEpisodeNumber));
+  }, [user]);
+
+  useEffect(() => {
+    if (!userChecked) return;
+    if (user && cutoff === null) return;
+    setLoading(true);
+    const standingsUrl = user ? `/api/standings?max_episode_number=${cutoff}` : "/api/standings";
     Promise.all([
       fetch("/api/seasons/current").then((r) => (r.ok ? r.json() : null)),
-      fetch("/api/standings").then((r) => r.json()),
+      fetch(standingsUrl).then((r) => r.json()),
     ])
       .then(([s, standings]) => {
         setSeason(s);
         setRows(standings);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [userChecked, user, cutoff]);
 
   function toggleWinnerPicks() {
     const next = !winnerPicksRevealed;

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import StackedPointsChart from "@/components/StackedPointsChart";
+import { AppUser, LOCAL_STORAGE_KEY } from "@/lib/types";
 
 interface EpisodeMeta {
   id: string;
@@ -34,6 +35,36 @@ export default function ScoresPage() {
   // _with_winner_pick views.
   const [withWinnerPick, setWithWinnerPick] = useState(true);
 
+  // Spoiler cutoff — see lib/pickCutoff.ts. No signed-in user (`user` stays
+  // null) means no restriction, matching this page's long-standing public/
+  // anonymous-friendly access. A signed-in user whose cutoff hasn't loaded
+  // yet (`cutoff === null`) is treated as "nothing visible" rather than
+  // briefly showing the unrestricted data.
+  const [user, setUser] = useState<AppUser | null>(null);
+  const [cutoff, setCutoff] = useState<number | null>(null);
+
+  useEffect(() => {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+    if (raw) {
+      try {
+        setUser(JSON.parse(raw));
+      } catch {
+        // ignore malformed storage
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/picks/cutoff?user_id=${user.id}`)
+      .then((r) => r.json())
+      .then((d: { cutoffEpisodeNumber: number }) => setCutoff(d.cutoffEpisodeNumber));
+  }, [user]);
+
+  function episodeVisible(number: number) {
+    return !user || (cutoff !== null && number <= cutoff);
+  }
+
   useEffect(() => {
     setLoading(true);
     fetch(`/api/points?by=${view}&with_winner_pick=${withWinnerPick}`)
@@ -49,14 +80,26 @@ export default function ScoresPage() {
       .finally(() => setLoading(false));
   }, [view, withWinnerPick]);
 
+  const visibleEpisodes = data.episodes.filter((ep) => episodeVisible(ep.number));
+  const visibleEpisodeIds = new Set(visibleEpisodes.map((ep) => ep.id));
+  const hiddenEpisodeCount = data.episodes.length - visibleEpisodes.length;
+
   const totals = data.series
-    .map((s) => ({
-      ...s,
-      total:
-        scope === "episode"
-          ? s.points[selectedEpisodeId] || 0
-          : Object.values(s.points).reduce((sum, v) => sum + v, 0),
-    }))
+    .map((s) => {
+      // Spoiler-safe elimination display — only shown once that episode is
+      // itself visible, same cutoff as everything else on this page.
+      const eliminatedVisible =
+        s.eliminatedEpisodeNumber != null && episodeVisible(s.eliminatedEpisodeNumber);
+      return {
+        ...s,
+        eliminated: eliminatedVisible,
+        eliminatedEpisodeNumber: eliminatedVisible ? s.eliminatedEpisodeNumber : null,
+        total:
+          scope === "episode" && visibleEpisodeIds.has(selectedEpisodeId)
+            ? s.points[selectedEpisodeId] || 0
+            : visibleEpisodes.reduce((sum, ep) => sum + (s.points[ep.id] || 0), 0),
+      };
+    })
     .sort((a, b) => b.total - a.total);
 
   // Active-state styling uses parchment rather than the app's usual ember
@@ -79,6 +122,13 @@ export default function ScoresPage() {
           ? "Full episode-by-episode breakdown — each bar is stacked by episode, so you can see both the season total and how it was built up week to week."
           : "Scores for a single episode."}
       </p>
+      {user && hiddenEpisodeCount > 0 && (
+        <p className="mt-1 text-xs text-gold">
+          {visibleEpisodes.length > 0
+            ? `Showing through Episode ${visibleEpisodes[visibleEpisodes.length - 1].number} — make your picks for the next episode to see more.`
+            : "Make your Episode 1 picks to start seeing scores."}
+        </p>
+      )}
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <div className="flex flex-wrap items-center gap-2">
@@ -118,9 +168,13 @@ export default function ScoresPage() {
       ) : (
         <>
           <StackedPointsChart
-            episodes={data.episodes}
+            episodes={visibleEpisodes}
             series={totals}
-            emptyLabel="No episodes logged yet this season."
+            emptyLabel={
+              data.episodes.length > 0
+                ? "Make your picks for an episode to see its scores."
+                : "No episodes logged yet this season."
+            }
             activeEpisodeId={scope === "episode" ? selectedEpisodeId : null}
             onEpisodeToggle={(episodeId) => {
               if (scope === "episode" && selectedEpisodeId === episodeId) {

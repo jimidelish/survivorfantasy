@@ -200,12 +200,28 @@ losing history. `user_episode_points_with_winner_pick` /
 `user_season_points_with_winner_pick` add the bonus back in, and are what
 Scores and Home actually display as real standings.
 
+### Pick cutoff (spoiler protection)
+
+If you fall behind on watching and haven't made your picks for an episode
+yet, the site hides that episode's results from you until you do — on
+Episode Events, Scores, and Home — so a faster-moving friend logging
+events or climbing the standings doesn't spoil what happened. Your cutoff
+is the latest episode you've made picks for, counted only **contiguously
+from Episode 1**: if you skip picking for one episode, everything after it
+stays hidden too, even if you went ahead and picked a later one — seeing
+that later data would leak that the skipped episode already aired. Signed
+out or haven't picked at all yet? You just see nothing restricted beyond
+what's always been public (Home/Scores) or nothing at all (Episode
+Events' event list).
+
 ---
 
 ## 4. Pages
 
 - **Home (`/`)** — deliberately spoiler-free: a welcome message and only
   season-to-date standings. No per-episode breakdown, no survivor status.
+  If you're signed in and behind on making picks, standings are also capped
+  to episodes you've actually picked for — see "Pick cutoff" below.
 - **My Picks (`/picks`)** — pick an episode, see your multiplier budget (with
   an explanation if you're getting a trailing-leader bonus), and assign
   multipliers to survivors. Each survivor card doubles as the "who's still
@@ -229,10 +245,19 @@ Scores and Home actually display as real standings.
   weekly multiplier budget.
 - **Scores (`/scores`)** — one page, toggle between a stacked bar chart of
   points **by player** or **by survivor**, each bar segmented by episode, plus
-  a sorted totals list below.
+  a sorted totals list below. If you're signed in and behind on picks, any
+  episode beyond your pick cutoff (see below) — and anything it would
+  reveal, including an elimination that happened there — is left out of
+  the chart, the per-episode filter, and the totals, with a note showing
+  which episode you're currently caught up through.
 - **Episode Events (`/events`)** — open to every signed-in user, but
   logging is admin-only. Non-admins pick an episode and see a read-only
-  "Events this episode" list; admins get that plus the full logging UI:
+  "Events this episode" list — unless that episode is beyond their pick
+  cutoff (see below), in which case the list is replaced with a prompt to
+  make their picks first; this applies to admins too, separately from their
+  ability to log events, which always stays available regardless of their
+  own cutoff. Admins get that list (cutoff permitting) plus the full
+  logging UI:
   checkboxes for survivors (photo + name, eliminated ones shown greyed out
   but still selectable) and for event types (grouped by category) —
   logging creates one event per survivor × event type combination in a
@@ -350,11 +375,13 @@ app/
                                              photos — powers My Picks' handicap-only "Other players'
                                              picks" panel and Admin's "Picks by user" (same component)
     picks/budget/                      Compute a user's multiplier budget
+    picks/cutoff/                        A user's spoiler cutoff episode number (lib/pickCutoff.ts)
     winner-pick/                        Get/set a user's winner pick (current season)
     winner-pick/all/                      Every user's winner pick for the current season, with
                                              survivor photo — powers Home's spoiler-gated section
     points/                              Per-episode points, by user or survivor
-    standings/                            Season-to-date leaderboard
+    standings/                            Season-to-date leaderboard (optional ?max_episode_number=
+                                             for Home's spoiler cutoff)
     users/                                  Name-based login
     admin/verify-password/                    Shared admin passphrase check
     admin/survivors-csv/                     Season Setup CSV upload
@@ -371,6 +398,7 @@ lib/
   supabaseAdmin.ts        Server-only Supabase client (service role key)
   currentSeason.ts          Resolves "current" = highest season number
   multiplierBudget.ts         Computes base 7 + behind-leader bonus
+  pickCutoff.ts                  A user's spoiler cutoff episode number (contiguous from Ep 1)
   csvFilenames.ts                Parses season number out of CSV filenames
   eventTriggers.ts                 The 21 standard trigger events + what each does
   triggerEngine.ts                   Applies/reverses a trigger's effect on a survivor

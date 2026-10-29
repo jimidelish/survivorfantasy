@@ -52,6 +52,11 @@ export default function EventsPage() {
   // color when a type isn't found here either.
   const [customAdvantageColors, setCustomAdvantageColors] = useState<Record<string, string>>({});
 
+  // The highest episode number this user can see events for — see
+  // lib/pickCutoff.ts. null while loading, treated as "nothing visible yet"
+  // so there's no flash of events before we know for sure.
+  const [pickCutoff, setPickCutoff] = useState<number | null>(null);
+
   useEffect(() => {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) {
@@ -60,6 +65,13 @@ export default function EventsPage() {
     }
     setUser(JSON.parse(raw));
   }, [router]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch(`/api/picks/cutoff?user_id=${user.id}`)
+      .then((r) => r.json())
+      .then((data: { cutoffEpisodeNumber: number }) => setPickCutoff(data.cutoffEpisodeNumber));
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -104,6 +116,11 @@ export default function EventsPage() {
   }, [user, episodeId]);
 
   const currentEpisode = episodes.find((e) => e.id === episodeId);
+
+  // Spoiler gate on the event log itself — applies to everyone, admins
+  // included, since logging an event and viewing the resulting list are
+  // separate capabilities (the admin form below stays usable regardless).
+  const eventsLocked = !currentEpisode || pickCutoff === null || currentEpisode.number > pickCutoff;
 
   const filteredEvents = useMemo(() => {
     let list = events;
@@ -465,68 +482,78 @@ export default function EventsPage() {
           )}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2">
-          <select
-            value={eventFilter}
-            onChange={(e) => setEventFilter(e.target.value)}
-            className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
-          >
-            <option value="all">All events</option>
-            <option value="mypicks">My picks</option>
-            {[...survivors]
-              .sort((a, b) => a.name.localeCompare(b.name))
-              .map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.name}
-                </option>
-              ))}
-          </select>
-
-          <span className="text-xs text-muted">Sort by:</span>
-          <select
-            value={eventSort}
-            onChange={(e) => setEventSort(e.target.value as typeof eventSort)}
-            className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
-          >
-            <option value="order">Event order</option>
-            <option value="survivor">Survivor name</option>
-          </select>
-
-          {eventFilter !== "all" && eventFilter !== "mypicks" && (
-            <span className="text-sm text-gold">
-              Total: {filteredTotal > 0 ? "+" : ""}
-              {filteredTotal}
-            </span>
-          )}
-        </div>
-
-        {events.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">Nothing logged yet.</p>
-        ) : filteredEvents.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">No events match this filter.</p>
+        {eventsLocked ? (
+          <p className="mt-3 text-sm text-muted">
+            {currentEpisode
+              ? `Make your picks for Episode ${currentEpisode.number} to see what's happened.`
+              : "Loading…"}
+          </p>
         ) : (
-          <ul className="mt-3 divide-y divide-surface2">
-            {filteredEvents.map((ev) => (
-              <li key={ev.id} className="flex items-center justify-between py-3">
-                <span className="text-sm">
-                  <span className="text-parchment">{ev.survivors?.name}</span>
-                  <span className="text-muted"> — {ev.event_types?.name} </span>
-                  <span className="text-ember">
-                    ({ev.point_value > 0 ? "+" : ""}
-                    {ev.point_value})
-                  </span>
+          <>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <select
+                value={eventFilter}
+                onChange={(e) => setEventFilter(e.target.value)}
+                className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
+              >
+                <option value="all">All events</option>
+                <option value="mypicks">My picks</option>
+                {[...survivors]
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+              </select>
+
+              <span className="text-xs text-muted">Sort by:</span>
+              <select
+                value={eventSort}
+                onChange={(e) => setEventSort(e.target.value as typeof eventSort)}
+                className="rounded-md border border-surface2 bg-surface px-3 py-1.5 text-sm"
+              >
+                <option value="order">Event order</option>
+                <option value="survivor">Survivor name</option>
+              </select>
+
+              {eventFilter !== "all" && eventFilter !== "mypicks" && (
+                <span className="text-sm text-gold">
+                  Total: {filteredTotal > 0 ? "+" : ""}
+                  {filteredTotal}
                 </span>
-                {user.is_admin && (
-                  <button
-                    onClick={() => undoEvent(ev.id)}
-                    className="text-xs text-muted hover:text-rust"
-                  >
-                    Undo
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
+              )}
+            </div>
+
+            {events.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">Nothing logged yet.</p>
+            ) : filteredEvents.length === 0 ? (
+              <p className="mt-3 text-sm text-muted">No events match this filter.</p>
+            ) : (
+              <ul className="mt-3 divide-y divide-surface2">
+                {filteredEvents.map((ev) => (
+                  <li key={ev.id} className="flex items-center justify-between py-3">
+                    <span className="text-sm">
+                      <span className="text-parchment">{ev.survivors?.name}</span>
+                      <span className="text-muted"> — {ev.event_types?.name} </span>
+                      <span className="text-ember">
+                        ({ev.point_value > 0 ? "+" : ""}
+                        {ev.point_value})
+                      </span>
+                    </span>
+                    {user.is_admin && (
+                      <button
+                        onClick={() => undoEvent(ev.id)}
+                        className="text-xs text-muted hover:text-rust"
+                      >
+                        Undo
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
       </div>
 

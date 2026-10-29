@@ -104,6 +104,35 @@ deployed on Vercel's free tier, connected to a GitHub repo for auto-deploy on pu
   enforced by a partial unique index) is what My Picks / Episode Events default
   to. `episodes.locked` is a separate flag controlling whether picks can
   still be submitted. Both are set from Admin > Season Control.
+- **Pick cutoff (spoiler protection)** — `lib/pickCutoff.ts`'s
+  `getPickCutoffEpisodeNumber(userId)`, served by `GET /api/picks/cutoff`,
+  is the highest episode number a user has made picks for, counted only
+  *contiguously from episode 1* (a gap — skipped or not-yet-made picks for
+  an earlier episode — caps it there, even if they somehow have picks saved
+  further along, since showing those would leak that the skipped episode
+  already happened). Someone behind on watching, who hasn't picked for an
+  episode yet, shouldn't be able to see on this site that it's already been
+  scored. Enforced client-side (consistent with the rest of this app's
+  gating) on three pages, all using the same "null cutoff reads as locked,
+  not as unrestricted" fail-closed pattern while it's loading:
+  - **Episode Events**: the "Events this episode" list (not the admin
+    logging form, which stays usable regardless — logging and viewing the
+    log are different capabilities) is replaced with a prompt when the
+    selected episode's number exceeds the viewer's cutoff. Applies to every
+    signed-in user, admins included.
+  - **Scores**: episodes beyond the cutoff are dropped from `data.episodes`
+    before anything else runs — the chart, its legend/episode-filter
+    buttons, and the totals list all derive from that filtered array, so a
+    hidden episode's points can't leak into anyone's visible total
+    (survivor or player) and a hidden elimination doesn't show its "Out Ep
+    N" tag either. A signed-out visitor sees this page exactly as before —
+    it's always been public, so "no user" means "no restriction," not
+    "cutoff zero."
+  - **Home**: `GET /api/standings` takes an optional `?max_episode_number=`
+    — when a user is signed in, Home passes their cutoff, and the route
+    sums `user_episode_points_with_winner_pick` through only that many
+    episodes instead of reading the pre-aggregated season-total view. Same
+    "no user → unrestricted" rule as Scores.
 - **Advantages** are their own table (`survivor_advantages`), not a field on
   `survivors`, so a survivor can hold several at once (e.g. an Idol AND an
   Extra Vote). Rows get `status = 'used'` rather than being deleted.
