@@ -22,6 +22,13 @@ interface PendingTransfer {
   survivor_name: string;
 }
 
+// The one event type that can be logged more than once per survivor in a
+// single click — a quantity stepper appears next to its checkbox, and
+// logging it N times just repeats its id N times in the bulk request
+// (app/api/events/bulk's route has no dedup, so this needs no server
+// change at all).
+const REPEATABLE_EVENT_NAME = "Shares Knowledge";
+
 export default function EventsPage() {
   const router = useRouter();
   const [user, setUser] = useState<AppUser | null>(null);
@@ -35,6 +42,9 @@ export default function EventsPage() {
   const [episodeId, setEpisodeId] = useState("");
   const [selectedSurvivorIds, setSelectedSurvivorIds] = useState<Set<string>>(new Set());
   const [selectedEventTypeIds, setSelectedEventTypeIds] = useState<Set<string>>(new Set());
+  // event_type_id -> how many times to log it per survivor — only ever
+  // shown/used for REPEATABLE_EVENT_NAME, but keyed generically.
+  const [eventQuantities, setEventQuantities] = useState<Record<string, number>>({});
   const [toggledTribeIds, setToggledTribeIds] = useState<Set<string>>(new Set());
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [submitting, setSubmitting] = useState(false);
@@ -225,13 +235,19 @@ export default function EventsPage() {
       return;
     }
     setSubmitting(true);
+    // Repeating an id N times in this array logs it N times per survivor —
+    // the bulk route doesn't dedup, so this is all that's needed for
+    // REPEATABLE_EVENT_NAME's quantity.
+    const eventTypeIdsWithQuantity = Array.from(selectedEventTypeIds).flatMap((id) =>
+      Array(eventQuantities[id] ?? 1).fill(id)
+    );
     const res = await fetch("/api/events/bulk", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         episode_id: episodeId,
         survivor_ids: Array.from(selectedSurvivorIds),
-        event_type_ids: Array.from(selectedEventTypeIds),
+        event_type_ids: eventTypeIdsWithQuantity,
         entered_by_user_id: user.id,
       }),
     });
@@ -249,6 +265,7 @@ export default function EventsPage() {
     }
     setSelectedSurvivorIds(new Set());
     setSelectedEventTypeIds(new Set());
+    setEventQuantities({});
     setToggledTribeIds(new Set());
     setExpandedCategories(new Set());
   }
@@ -291,7 +308,11 @@ export default function EventsPage() {
 
   if (!user) return null;
 
-  const eventCount = selectedSurvivorIds.size * selectedEventTypeIds.size;
+  const totalEventTypeQuantity = Array.from(selectedEventTypeIds).reduce(
+    (sum, id) => sum + (eventQuantities[id] ?? 1),
+    0
+  );
+  const eventCount = selectedSurvivorIds.size * totalEventTypeQuantity;
 
   return (
     <div>
@@ -411,6 +432,10 @@ export default function EventsPage() {
                     selectedEventTypeIds={selectedEventTypeIds}
                     onToggle={toggleEventType}
                     customColors={customAdvantageColors}
+                    eventQuantities={eventQuantities}
+                    onQuantityChange={(id, v) =>
+                      setEventQuantities((prev) => ({ ...prev, [id]: v }))
+                    }
                   />
                 ) : (
                   expanded && (
@@ -418,21 +443,30 @@ export default function EventsPage() {
                       {types.map((t) => {
                         const checked = selectedEventTypeIds.has(t.id);
                         return (
-                          <label
-                            key={t.id}
-                            className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
-                              checked ? "bg-surface text-parchment" : "text-muted hover:bg-surface"
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleEventType(t.id)}
-                              className="h-4 w-4 shrink-0"
-                            />
-                            {t.name} ({t.point_value > 0 ? "+" : ""}
-                            {t.point_value})
-                          </label>
+                          <div key={t.id} className="flex items-center gap-1">
+                            <label
+                              className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                                checked ? "bg-surface text-parchment" : "text-muted hover:bg-surface"
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleEventType(t.id)}
+                                className="h-4 w-4 shrink-0"
+                              />
+                              {t.name} ({t.point_value > 0 ? "+" : ""}
+                              {t.point_value})
+                            </label>
+                            {t.name === REPEATABLE_EVENT_NAME && (
+                              <QuantityStepper
+                                value={eventQuantities[t.id] ?? 1}
+                                onChange={(v) =>
+                                  setEventQuantities((prev) => ({ ...prev, [t.id]: v }))
+                                }
+                              />
+                            )}
+                          </div>
                         );
                       })}
                     </div>
@@ -725,11 +759,15 @@ function AdvantageCategoryBody({
   selectedEventTypeIds,
   onToggle,
   customColors,
+  eventQuantities,
+  onQuantityChange,
 }: {
   types: EventType[];
   selectedEventTypeIds: Set<string>;
   onToggle: (id: string) => void;
   customColors: Record<string, string>;
+  eventQuantities: Record<string, number>;
+  onQuantityChange: (id: string, value: number) => void;
 }) {
   const groupMap = new Map<string, { suffix: string; t: EventType }[]>();
   const standalone: EventType[] = [];
@@ -802,21 +840,28 @@ function AdvantageCategoryBody({
           {standalone.map((t) => {
             const checked = selectedEventTypeIds.has(t.id);
             return (
-              <label
-                key={t.id}
-                className={`flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
-                  checked ? "bg-surface text-parchment" : "text-muted hover:bg-surface"
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => onToggle(t.id)}
-                  className="h-4 w-4 shrink-0"
-                />
-                {t.name} ({t.point_value > 0 ? "+" : ""}
-                {t.point_value})
-              </label>
+              <div key={t.id} className="flex items-center gap-1">
+                <label
+                  className={`flex flex-1 cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-sm ${
+                    checked ? "bg-surface text-parchment" : "text-muted hover:bg-surface"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => onToggle(t.id)}
+                    className="h-4 w-4 shrink-0"
+                  />
+                  {t.name} ({t.point_value > 0 ? "+" : ""}
+                  {t.point_value})
+                </label>
+                {t.name === REPEATABLE_EVENT_NAME && (
+                  <QuantityStepper
+                    value={eventQuantities[t.id] ?? 1}
+                    onChange={(v) => onQuantityChange(t.id, v)}
+                  />
+                )}
+              </div>
             );
           })}
         </div>
@@ -843,4 +888,44 @@ function advantagePillColor(
     return customColors[action.advantageType] ?? getAdvantageColor(action.advantageType);
   }
   return customColors[prefix] ?? "#8FA294";
+}
+
+// A small -/+ counter, min 1 — used next to REPEATABLE_EVENT_NAME's
+// checkbox (as a sibling, not nested inside its <label>, so clicking the
+// buttons never also toggles the checkbox) to say how many times to log it
+// per selected survivor.
+function QuantityStepper({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <span className="flex shrink-0 items-center gap-1">
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          onChange(Math.max(1, value - 1));
+        }}
+        className="h-5 w-5 rounded border border-surface2 text-xs leading-none text-muted hover:border-gold/50"
+        aria-label="Decrease quantity"
+      >
+        −
+      </button>
+      <span className="w-4 text-center text-xs text-parchment">{value}</span>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          onChange(value + 1);
+        }}
+        className="h-5 w-5 rounded border border-surface2 text-xs leading-none text-muted hover:border-gold/50"
+        aria-label="Increase quantity"
+      >
+        +
+      </button>
+    </span>
+  );
 }
