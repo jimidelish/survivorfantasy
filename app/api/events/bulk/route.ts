@@ -31,15 +31,23 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // event_type_ids can contain repeats (e.g. logging "Shares Knowledge"
+  // for a quantity > 1 — see QuantityStepper on the Episode Events page),
+  // so validate against the de-duplicated set: a `WHERE id IN (...)` query
+  // only ever returns one row per id no matter how many times it's
+  // repeated in the array, so comparing lengths directly against the raw
+  // (possibly-repeating) array would false-positive here.
+  const uniqueEventTypeIds = Array.from(new Set(event_type_ids));
+
   // Snapshot each event type's point value NOW, same as the single-event
   // route, so later balance changes never retroactively alter these.
   const { data: types, error: typesError } = await supabaseAdmin
     .from("event_types")
     .select("id, point_value")
-    .in("id", event_type_ids);
+    .in("id", uniqueEventTypeIds);
 
   if (typesError) return NextResponse.json({ error: typesError.message }, { status: 500 });
-  if (!types || types.length !== event_type_ids.length) {
+  if (!types || types.length !== uniqueEventTypeIds.length) {
     return NextResponse.json({ error: "One or more event types not found." }, { status: 404 });
   }
   const pointByType = new Map(types.map((t) => [t.id, t.point_value]));
