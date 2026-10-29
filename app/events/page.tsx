@@ -903,6 +903,7 @@ function QuantityStepper({
 }) {
   return (
     <span className="flex shrink-0 items-center gap-1">
+      <span className="text-xs text-muted"># of people:</span>
       <button
         type="button"
         onClick={(e) => {
